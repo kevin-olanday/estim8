@@ -280,7 +280,7 @@ export async function revealVotes(storyId: string) {
   const formattedVotes = detailedVotes.map((vote) => ({
     playerId: vote.playerId,
     playerName: vote.player.name || "",
-    value: vote.value,
+    value: vote.choice,
   }))
 
   // Broadcast votes via Pusher

@@ -298,6 +298,43 @@ export async function updateDeck(deckType: DeckType, customDeck?: Deck) {
   return { success: true }
 }
 
+export async function updateRoomSettings(settings: { autoRevealVotes?: boolean }) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const playerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !playerId) {
+    throw new Error("Not authenticated")
+  }
+
+  // Check if player is host
+  const player = await prisma.player.findUnique({
+    where: {
+      id: playerId,
+      roomId,
+    },
+  })
+
+  if (!player?.isHost) {
+    throw new Error("Only the host can update room settings")
+  }
+
+  // Update room settings
+  await prisma.room.update({
+    where: { id: roomId },
+    data: {
+      ...(settings.autoRevealVotes !== undefined && { autoRevealVotes: settings.autoRevealVotes }),
+    },
+  })
+
+  // Optionally, broadcast the settings update via Pusher if you want real-time updates
+  await pusherServer.trigger(`room-${roomId}`, "room-settings-updated", settings)
+
+  revalidatePath(`/room/[roomId]`)
+
+  return { success: true }
+}
+
 // Helper functions
 function generateRoomCode() {
   const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

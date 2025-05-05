@@ -76,6 +76,20 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     return () => channel.unbind("active-story-changed", handleActiveStoryChanged)
   }, [channel, setCurrentStory])
 
+  useEffect(() => {
+    if (!channel) return
+
+    const handleVotesRevealed = (data: any) => {
+      setVotesRevealed(true)
+      if (Array.isArray(data.votes)) {
+        setLocalVotes(data.votes)
+      }
+    }
+
+    channel.bind("votes-revealed", handleVotesRevealed)
+    return () => channel.unbind("votes-revealed", handleVotesRevealed)
+  }, [channel])
+
   // Calculate allPlayersVoted from real-time localVotes and players
   const allPlayersVoted =
     roomData.players.length > 0 &&

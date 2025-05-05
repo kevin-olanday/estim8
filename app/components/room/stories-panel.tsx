@@ -67,7 +67,7 @@ export default function StoriesPanel({ stories, isHost }: StoriesPanelProps) {
             : story
         )
       )
-      setCurrentStory((prev) =>
+      setCurrentStory((prev: { id: string; status: string } | null) =>
         prev && prev.id === data.id
           ? { ...prev, status: "completed" }
           : prev

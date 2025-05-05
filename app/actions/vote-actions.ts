@@ -48,8 +48,15 @@ export async function submitVote(storyId: string, value: string) {
   }
 
   // Validate that the vote value exists in the deck
-  const deck = room.deck as { label: string }[]
-  const isValidVote = deck.some((card) => card.label === value)
+  let deck = room.deck as any
+  if (typeof deck === "string") {
+    try {
+      deck = JSON.parse(deck)
+    } catch {
+      throw new Error("Invalid deck format")
+    }
+  }
+  const isValidVote = Array.isArray(deck) && deck.some((card) => card.label === value)
 
   if (!isValidVote) {
     throw new Error("Invalid vote value")
