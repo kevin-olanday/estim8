@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DeckType {
+  FIBONACCI
+  MODIFIED_FIBONACCI
+  TSHIRT
+  POWERS_OF_TWO
+  SEQUENTIAL
+  RISK
+  CUSTOM
+}
+
+enum StoryStatus {
+  idle
+  active
+  completed
+}
+
+model Room {
+  id            String     @id @default(cuid())
+  code          String     @unique
+  deckType      DeckType   @default(CUSTOM)
+  deck          Json       
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  expiresAt     DateTime?
+
+  autoRevealVotes Boolean  @default(false)
+
+  activeStory   Story?     @relation("ActiveStory", fields: [activeStoryId], references: [id])
+  activeStoryId String?    @unique
+
+  stories       Story[]
+  players       Player[]
+
+  @@index([expiresAt])
+}
+
+model Story {
+  id            String     @id @default(cuid())
+  room          Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId        String
+  title         String
+  description   String?
+  status        StoryStatus @default(idle) // "idle" | "active" | "completed"
+  finalScore    Float?
+  votesRevealed Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @default(now())
+
+  votes         Vote[]
+  activeInRoom  Room?      @relation("ActiveStory")
+
+  @@index([roomId])
+}
+
+model Player {
+  id        String     @id @default(cuid())
+  room      Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+  name      String?
+  emoji     String?
+  isHost    Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now())
+
+  votes     Vote[]
+
+  @@index([roomId])
+}
+
+model Vote {
+  id        Int      @id @default(autoincrement())
+  choice    String   // Must match one of the deck[].label values
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId  String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  storyId   String
+
+  @@unique([playerId, storyId])
+}
