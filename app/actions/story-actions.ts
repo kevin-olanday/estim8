@@ -40,7 +40,7 @@ export async function addStory(title: string, description: string | null = null)
   })
 
   // Broadcast story update via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "story-added", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "story-added", {
     id: story.id,
     title: story.title,
     description: story.description,
@@ -78,10 +78,10 @@ export async function setActiveStory(storyId: string) {
     data: { status: "idle" },
   })
 
-  // Set the selected story to "active"
+  // Set the selected story to "active" and reset votesRevealed
   const story = await prisma.story.update({
     where: { id: storyId, roomId },
-    data: { status: "active" },
+    data: { status: "active", votesRevealed: false },
   })
 
   // Update the room's activeStoryId
@@ -102,11 +102,12 @@ export async function setActiveStory(storyId: string) {
   })
 
   // Broadcast story update via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "active-story-changed", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "active-story-changed", {
     id: story.id,
     title: story.title,
     description: story.description,
     status: story.status,
+    votesRevealed: story.votesRevealed,
   })
 
   revalidatePath(`/room/[roomId]`)
@@ -148,7 +149,7 @@ export async function updateStory(storyId: string, title: string, description: s
   })
 
   // Broadcast story update via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "story-updated", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "story-updated", {
     id: story.id,
     title: story.title,
     description: story.description,
@@ -213,7 +214,7 @@ export async function completeStory(storyId: string) {
   }
 
   // Broadcast story update via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "story-completed", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "story-completed", {
     id: story.id,
   })
 
@@ -243,38 +244,18 @@ export async function revealVotes(storyId: string) {
     throw new Error("Only the host can reveal votes")
   }
 
-  // Get all votes for the story
-  const votes = await prisma.vote.findMany({
-    where: { storyId },
-  })
-
-  // Calculate final score (average of numeric votes)
-  const numericVotes = votes
-    .map((vote) => Number(vote.choice))
-    .filter((v) => !isNaN(v))
-  const finalScore =
-    numericVotes.length > 0
-      ? numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length
-      : null
-
-  // Mark the story as completed and store the final score
-  const story = await prisma.story.update({
+  // Update story to reveal votes
+  await prisma.story.update({
     where: { id: storyId, roomId },
     data: {
-      status: "completed",
-      finalScore,
       votesRevealed: true,
     },
   })
 
   // Get all votes for the story
   const detailedVotes = await prisma.vote.findMany({
-    where: {
-      storyId,
-    },
-    include: {
-      player: true,
-    },
+    where: { storyId },
+    include: { player: true },
   })
 
   const formattedVotes = detailedVotes.map((vote) => ({
@@ -284,13 +265,13 @@ export async function revealVotes(storyId: string) {
   }))
 
   // Broadcast votes via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "votes-revealed", {
+  console.log('Triggering votes-revealed event for story', storyId, 'with votes:', formattedVotes);
+  await pusherServer.trigger(`presence-room-${roomId}`, "votes-revealed", {
     storyId,
     votes: formattedVotes,
   })
 
   revalidatePath(`/room/[roomId]`)
-
   return { success: true }
 }
 
@@ -315,7 +296,7 @@ export async function resetVotes(storyId: string) {
     throw new Error("Only the host can reset votes")
   }
 
-  // Update the story
+  // Update story to hide votes
   await prisma.story.update({
     where: {
       id: storyId,
@@ -334,11 +315,38 @@ export async function resetVotes(storyId: string) {
   })
 
   // Broadcast reset via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "votes-reset", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "votes-reset", {
     storyId,
   })
 
   revalidatePath(`/room/[roomId]`)
+  return { success: true }
+}
 
+export async function deleteStory(storyId: string) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const playerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !playerId) {
+    throw new Error("Not authenticated")
+  }
+
+  // Check if player is host
+  const player = await prisma.player.findUnique({
+    where: { id: playerId, roomId },
+  })
+  if (!player?.isHost) {
+    throw new Error("Only the host can delete stories")
+  }
+
+  // Delete the story and its votes
+  await prisma.vote.deleteMany({ where: { storyId } })
+  await prisma.story.delete({ where: { id: storyId, roomId } })
+
+  // Broadcast story deletion via Pusher
+  await pusherServer.trigger(`presence-room-${roomId}`, "story-deleted", { id: storyId })
+
+  revalidatePath(`/room/[roomId]`)
   return { success: true }
 }

@@ -88,7 +88,7 @@ export default function RoomTabs({ storyHistory, settings, isHost }: RoomTabsPro
                   <div key={story.id} className="border rounded-md p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium">{story.title}</h3>
-                      {story.finalEstimate && <Badge className="ml-2">{story.finalEstimate}</Badge>}
+                      {story.finalEstimate && <span className="btn-utility text-xs px-2 py-0.5 ml-2">{story.finalEstimate}</span>}
                     </div>
 
                     {story.description && <p className="text-sm text-muted-foreground mb-4">{story.description}</p>}
@@ -97,9 +97,7 @@ export default function RoomTabs({ storyHistory, settings, isHost }: RoomTabsPro
                       <p className="text-sm font-medium mb-1">Votes:</p>
                       <div className="flex flex-wrap gap-2">
                         {story.votes.map((vote) => (
-                          <Badge key={vote.userId} variant="outline">
-                            {vote.userName}: {vote.value}
-                          </Badge>
+                          <span key={vote.userId} className="btn-utility text-xs px-2 py-0.5">{vote.userName}: {vote.value}</span>
                         ))}
                       </div>
                     </div>

@@ -8,34 +8,47 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { PlusCircle, Eye, EyeOff, SkipForward, RotateCcw } from "lucide-react"
+import { PlusCircle, Eye, EyeOff, SkipForward, RotateCcw, Plus, Trash2, Settings } from "lucide-react"
 import { addStory, completeStory } from "@/app/actions/story-actions"
 import { revealVotes, resetVotes } from "@/app/actions/story-actions"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
-import { updateRoomSettings } from "@/app/actions/room-actions"
+import { updateRoomSettings, updateDeck } from "@/app/actions/room-actions"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DEFAULT_DECKS, DeckType } from "@/types/card"
+import type { Card as CardType, Deck } from "@/types/card"
+import { DeckCard } from "@/app/components/room/card"
 
 interface HostControlsProps {
   currentStoryId: string | null
   votesRevealed: boolean
   hasVotes: boolean
-  autoRevealVotes: boolean
   allPlayersVoted: boolean
   storyStatus?: "idle" | "active" | "completed"
+  currentDeckType: DeckType
+  currentDeck: Deck
 }
 
 export default function HostControls({
   currentStoryId,
   votesRevealed,
   hasVotes,
-  autoRevealVotes,
   allPlayersVoted,
   storyStatus = "idle",
+  currentDeckType,
+  currentDeck,
 }: HostControlsProps) {
   const [isAddingStory, setIsAddingStory] = useState(false)
   const [storyTitle, setStoryTitle] = useState("")
   const [storyDescription, setStoryDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [autoReveal, setAutoReveal] = useState(autoRevealVotes)
+  const [isDeckDialogOpen, setIsDeckDialogOpen] = useState(false)
+  const [deckType, setDeckType] = useState<DeckType>(currentDeckType)
+  const [customDeck, setCustomDeck] = useState<Deck>(
+    deckType === DeckType.CUSTOM ? currentDeck : DEFAULT_DECKS[DeckType.CUSTOM],
+  )
+  const [newCard, setNewCard] = useState<CardType>({ label: "" })
+  const [isDeckSubmitting, setIsDeckSubmitting] = useState(false)
 
   const handleAddStory = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,9 +97,36 @@ export default function HostControls({
     }
   }
 
-  const handleToggleAutoReveal = async () => {
-    setAutoReveal((prev) => !prev)
-    await updateRoomSettings({ autoRevealVotes: !autoReveal })
+  const handleDeckTypeChange = (value: string) => {
+    const newDeckType = value as DeckType
+    setDeckType(newDeckType)
+    if (newDeckType !== DeckType.CUSTOM) {
+      setCustomDeck(DEFAULT_DECKS[DeckType.CUSTOM])
+    }
+  }
+
+  const handleAddCard = () => {
+    if (!newCard.label) return
+    setCustomDeck([...customDeck, { label: newCard.label }])
+    setNewCard({ label: "" })
+  }
+
+  const handleRemoveCard = (index: number) => {
+    const updatedDeck = [...customDeck]
+    updatedDeck.splice(index, 1)
+    setCustomDeck(updatedDeck)
+  }
+
+  const handleSaveDeck = async () => {
+    setIsDeckSubmitting(true)
+    try {
+      await updateDeck(deckType, deckType === DeckType.CUSTOM ? customDeck : undefined)
+      setIsDeckDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to update deck:", error)
+    } finally {
+      setIsDeckSubmitting(false)
+    }
   }
 
   useEffect(() => {
@@ -113,22 +153,29 @@ export default function HostControls({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [currentStoryId, hasVotes, votesRevealed])
 
-  const canRevealVotes =
-    storyStatus === "active" && allPlayersVoted && !votesRevealed
+  const canRevealVotes = storyStatus === "active" && allPlayersVoted && !votesRevealed
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle>Host Controls</CardTitle>
-      </CardHeader>
+    <Card className="rounded-xl bg-surface/80 backdrop-blur-sm p-4 shadow-md border border-border section-card">
+      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-xl">
+        <Settings className="h-5 w-5 text-accent/80" />
+        <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Host Controls</h2>
+      </div>
+      <div className="mb-3" />
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 pl-0.5">
+            Manage Session
+          </div>
           <Dialog open={isAddingStory} onOpenChange={setIsAddingStory}>
             <DialogTrigger asChild>
-              <Button className="w-full">
-                <PlusCircle className="h-4 w-4 mr-2" />
+              <button
+                className="w-full bg-gradient-to-r from-accent to-accent-hover text-white font-semibold py-2 rounded-lg shadow hover:shadow-lg transition-all duration-150 hover:from-accent-hover hover:to-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
+                type="button"
+              >
+                <PlusCircle className="h-4 w-4 mr-2 inline" />
                 Add Story
-              </Button>
+              </button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -159,58 +206,141 @@ export default function HostControls({
               </form>
             </DialogContent>
           </Dialog>
-
-          <Button
-            className="w-full"
-            variant={votesRevealed ? "outline" : "default"}
-            onClick={votesRevealed ? handleResetVotes : handleRevealVotes}
-            disabled={!canRevealVotes && !votesRevealed}
-          >
-            {votesRevealed ? (
-              <>
-                <EyeOff className="h-4 w-4 mr-2" />
-                Hide Votes
-              </>
-            ) : (
-              <>
-                <Eye className="h-4 w-4 mr-2" />
-                Reveal Votes
-              </>
-            )}
-          </Button>
-
-          <Button
-            className="w-full"
-            variant="outline"
-            onClick={handleResetVotes}
-            disabled={!currentStoryId || !hasVotes}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset Votes
-          </Button>
-
-          <ConfirmDialog
-            title="Complete Story"
-            description="This will mark the current story as completed. You can start a new story afterwards."
-            actionText="Complete"
-            onConfirm={handleCompleteStory}
-          >
-            <Button className="w-full" variant="outline" disabled={!currentStoryId}>
-              <SkipForward className="h-4 w-4 mr-2" />
+          <div className="border-t border-border pt-3" />
+          <div className="space-y-2">
+            <button
+              className="w-full bg-muted border border-border text-foreground font-medium py-2 rounded-lg hover:bg-muted/80 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/30"
+              onClick={votesRevealed ? handleResetVotes : handleRevealVotes}
+              disabled={votesRevealed ? false : !canRevealVotes}
+              type="button"
+            >
+              {votesRevealed ? (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2 inline" />
+                  Reset Votes
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2 inline" />
+                  Reveal Votes
+                </>
+              )}
+            </button>
+            <button
+              className="w-full bg-secondary/20 border border-secondary text-secondary font-medium py-2 rounded-lg hover:bg-secondary/30 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary/30"
+              onClick={handleCompleteStory}
+              disabled={!currentStoryId}
+              type="button"
+            >
+              <SkipForward className="h-4 w-4 mr-2 inline" />
               Complete Story
-            </Button>
-          </ConfirmDialog>
-
-          <div className="flex items-center space-x-2">
-            <label htmlFor="autoRevealVotes">Auto Reveal Votes</label>
-            <input
-              id="autoRevealVotes"
-              type="checkbox"
-              checked={autoReveal}
-              onChange={handleToggleAutoReveal}
-            />
+            </button>
+            <button
+              className="w-full bg-secondary/10 border border-secondary text-secondary font-medium py-2 rounded-lg hover:bg-secondary/20 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary/30"
+              onClick={() => setIsDeckDialogOpen(true)}
+              type="button"
+            >
+              <Settings className="h-4 w-4 mr-2 inline" />
+              Customize Deck
+            </button>
           </div>
         </div>
+        <Dialog open={isDeckDialogOpen} onOpenChange={setIsDeckDialogOpen}>
+          <DialogTrigger asChild></DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Customize Voting Deck</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <label className="label-base">Deck Type</label>
+                <Select value={deckType} onValueChange={handleDeckTypeChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select deck type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={DeckType.FIBONACCI}>Fibonacci</SelectItem>
+                    <SelectItem value={DeckType.MODIFIED_FIBONACCI}>Modified Fibonacci</SelectItem>
+                    <SelectItem value={DeckType.TSHIRT}>T-Shirt Sizes</SelectItem>
+                    <SelectItem value={DeckType.POWERS_OF_TWO}>Powers of Two</SelectItem>
+                    <SelectItem value={DeckType.SEQUENTIAL}>Sequential</SelectItem>
+                    <SelectItem value={DeckType.RISK}>Risk Assessment</SelectItem>
+                    <SelectItem value={DeckType.CUSTOM}>Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Tabs defaultValue="preview" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="preview">Preview</TabsTrigger>
+                  {deckType === DeckType.CUSTOM && <TabsTrigger value="edit">Edit Cards</TabsTrigger>}
+                </TabsList>
+                <TabsContent value="preview" className="space-y-4">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mt-4">
+                    {((deckType === DeckType.CUSTOM ? customDeck : DEFAULT_DECKS[deckType]) || []).map((card, index) => (
+                      <DeckCard key={index} label={card.label} selected={false} onClick={() => {}} />
+                    ))}
+                    {(!customDeck && deckType === DeckType.CUSTOM) && (
+                      <div className="col-span-full text-red-500 text-sm">
+                        Warning: customDeck is undefined.
+                      </div>
+                    )}
+                    {(!DEFAULT_DECKS[deckType] && deckType !== DeckType.CUSTOM) && (
+                      <div className="col-span-full text-red-500 text-sm">
+                        Warning: DEFAULT_DECKS[deckType] is undefined for deckType: {String(deckType)}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                {deckType === DeckType.CUSTOM &&
+                  <TabsContent value="edit" className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="label-base">Label</label>
+                          <Input
+                            value={newCard.label}
+                            onChange={(e) => setNewCard({ label: e.target.value })}
+                            placeholder="e.g. 1, XS, Low"
+                          />
+                        </div>
+                      </div>
+                      <button className="btn btn-primary" onClick={handleAddCard} disabled={!newCard.label} type="button">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Card
+                      </button>
+                    </div>
+                    <div className="card-base p-4">
+                      <h3 className="font-medium mb-2">Current Cards</h3>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {customDeck.map((card, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                              <span>{card.label}</span>
+                            <button className="btn btn-ghost" onClick={() => handleRemoveCard(index)} type="button">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </button>
+                          </div>
+                        ))}
+                        {customDeck.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No cards added yet. Add some cards above.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                }
+              </Tabs>
+              <div className="flex justify-end gap-2 pt-4">
+                <button className="btn btn-secondary" onClick={() => setIsDeckDialogOpen(false)} type="button">
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleSaveDeck} disabled={isDeckSubmitting} type="button">
+                  {isDeckSubmitting ? "Saving..." : "Save Deck"}
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   )

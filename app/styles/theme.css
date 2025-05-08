@@ -1,0 +1,159 @@
+@tailwind utilities;
+
+/* 🎨 DARK THEME ROOT COLORS */
+:root {
+  /* 🔳 CORE BACKGROUND & SURFACE */
+  --color-background: #0B0E11;           /* ultra-dark, luxurious */
+  --color-surface: #141820;              /* smoked obsidian */
+  --color-muted: #1C212C;                /* soft shadow panels */
+
+  /* ✍️ TEXT & FOREGROUND */
+  --color-foreground: #F1F5F9;           /* clean, legible */
+  --color-muted-foreground: #A0A8B8;     /* soft tech-gray */
+
+  /* 🔵 PRIMARY: Muted Sapphire */
+  --color-accent: #4654F0;               /* tech sapphire */
+  --color-accent-hover: #3B47D6;
+  --color-ring: #5C6DF6;
+
+  /* 🌷 SECONDARY: Dusty Rosewood */
+  --color-secondary: #C25278;            /* rich orchid-rose */
+  --color-secondary-hover: #A74467;
+  --color-secondary-muted: #F3D1DD;
+  --color-secondary-ring: #DA6C92;
+
+  /* ⚠️ SYSTEM COLORS */
+  --color-error: #FF4B4B;
+  --color-success: #22D487;
+  --color-warning: #FACC15;
+
+  /* 🎲 BORDERS */
+  --color-border: #2A2F3D;
+}
+
+@layer utilities {
+  /* 🧱 Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply bg-accent text-white shadow;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-accent-hover);
+    box-shadow: 0 4px 10px rgba(70, 84, 240, 0.2);
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-secondary-hover;
+  }
+
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+
+  .bg-secondary {
+    background-color: var(--color-secondary);
+  }
+
+  .bg-secondary-hover {
+    background-color: var(--color-secondary-hover);
+  }
+
+  .border-secondary {
+    border-color: var(--color-secondary);
+  }
+
+  .ring-secondary {
+    --tw-ring-color: var(--color-secondary-ring);
+  }
+
+  .tag-secondary {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-secondary-muted text-secondary;
+  }
+
+  /* 📦 Section Layout */
+  .section-card {
+    @apply rounded-2xl border border-border bg-surface px-2 py-1 shadow;
+  }
+
+  .section-header {
+    @apply text-xl font-semibold text-muted-foreground mb-4 tracking-tight;
+  }
+
+  /* 🃏 Cards */
+  .card-base {
+    @apply rounded-xl bg-muted border border-border shadow-sm;
+  }
+
+  .card-selected {
+    @apply ring-2 ring-accent scale-110 shadow-xl;
+  }
+
+  .card-hover {
+    @apply transition;
+  }
+  .card-hover:hover {
+    box-shadow: 0 6px 16px rgba(70, 84, 240, 0.15);
+    border-color: var(--color-accent);
+  }
+
+  /* 🧾 Forms */
+  .input-base {
+    @apply w-full rounded-md border border-border bg-surface text-foreground px-4 py-2 text-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .label-base {
+    @apply text-sm font-semibold text-muted-foreground mb-1;
+  }
+
+  /* 🧠 Typography */
+  .heading-1 {
+    @apply text-3xl font-bold text-foreground tracking-tight;
+  }
+
+  .heading-2 {
+    @apply text-2xl font-semibold text-foreground;
+  }
+
+  .heading-3 {
+    @apply text-lg font-medium text-muted-foreground;
+  }
+
+  .body-text {
+    @apply text-base text-foreground;
+  }
+
+  .subtle-text {
+    @apply text-sm text-muted-foreground;
+  }
+
+  /* 💬 Tags */
+  .tag {
+    @apply inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold text-foreground border border-border;
+  }
+
+  /* 🎯 Theme-aware Custom Color Utilities */
+  .text-muted-foreground { color: var(--color-muted-foreground); }
+  .text-foreground { color: var(--color-foreground); }
+  .text-accent { color: var(--color-accent); }
+  .text-success { color: var(--color-success); }
+  .text-warning { color: var(--color-warning); }
+  .text-error { color: var(--color-error); }
+
+  .bg-muted { background-color: var(--color-muted); }
+  .bg-surface { background-color: var(--color-surface); }
+  .bg-accent { background-color: var(--color-accent); }
+  .bg-accent-hover { background-color: var(--color-accent-hover); }
+  .bg-success { background-color: var(--color-success); }
+  .bg-warning { background-color: var(--color-warning); }
+
+  .border-border { border-color: var(--color-border); }
+  .border-accent { border-color: var(--color-accent); }
+  .ring-ring { --tw-ring-color: var(--color-ring); }
+
+  .btn-utility {
+    @apply bg-transparent border border-secondary text-secondary rounded-full px-2 py-0.5 text-xs font-medium transition-colors duration-150 hover:bg-secondary/10 active:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:ring-offset-2 shadow-none;
+  }
+}

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Edit, Save } from "lucide-react"
+import { Edit, Save, FileText } from "lucide-react"
 import { updateStory } from "@/app/actions/story-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
@@ -50,7 +50,7 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
 
   if (!story) {
     return (
-      <Card className="border-dashed">
+      <Card className="section-card border-dashed">
         <CardContent className="p-6 text-center">
           <p className="text-muted-foreground">
             {isHost ? "Add a story to start estimation" : "Waiting for the host to add a story"}
@@ -75,22 +75,26 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-xl">Current Story</CardTitle>
+    <Card className="section-card">
+      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-accent/80" />
+          <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Current Story</h2>
+        </div>
         {isHost && !isEditing && (
-          <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-            <Edit className="h-4 w-4 mr-2" />
+          <button className="btn-utility flex items-center gap-1 text-sm font-semibold px-3 py-1 hover:text-accent transition-colors" onClick={() => setIsEditing(true)} type="button">
+            <Edit className="h-4 w-4" />
             Edit
-          </Button>
+          </button>
         )}
         {isHost && isEditing && (
-          <Button variant="ghost" size="sm" onClick={handleSave} disabled={isSaving}>
+          <button className="btn btn-primary text-sm font-semibold" onClick={handleSave} disabled={isSaving} type="button">
             <Save className="h-4 w-4 mr-2" />
             Save
-          </Button>
+          </button>
         )}
-      </CardHeader>
+      </div>
+      <div className="mb-3" />
       <CardContent>
         {isEditing ? (
           <div className="space-y-4">
@@ -113,8 +117,8 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            <h3 className="font-medium text-lg">{story.title}</h3>
-            <p className="text-muted-foreground whitespace-pre-line">
+            <h3 className="font-bold text-xl text-foreground leading-tight tracking-tight">{story.title}</h3>
+            <p className="text-base text-muted-foreground whitespace-pre-line">
               {story.description || "No description provided."}
             </p>
           </div>

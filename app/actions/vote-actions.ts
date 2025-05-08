@@ -106,7 +106,7 @@ export async function submitVote(storyId: string, value: string) {
   }
 
   // Broadcast vote update via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "vote-submitted", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "vote-submitted", {
     playerId,
     storyId,
     value: vote?.choice,

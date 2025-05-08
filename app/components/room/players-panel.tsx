@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Check, Crown } from "lucide-react"
+import { LogOut, Loader, CheckCircle, Circle, Crown, Users } from "lucide-react"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useNotification } from "@/app/context/notification-context"
+import { kickPlayer } from "@/app/actions/room-actions"
+import { useCurrentStory } from "@/app/context/current-story-context"
 import type { Deck } from "@/types/card"
 
 interface Player {
@@ -16,6 +18,7 @@ interface Player {
   vote: string | null
   isOnline: boolean
   isHost: boolean
+  hasVoted?: boolean
 }
 
 interface PlayersPanelProps {
@@ -26,15 +29,84 @@ interface PlayersPanelProps {
   deck: Deck
 }
 
+function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline"; title: string }) {
+  if (status === "thinking") {
+    return (
+      <span title={title}>
+        <Loader
+          className="w-4 h-4 animate-spin text-secondary"
+          aria-label={title}
+        />
+      </span>
+    )
+  }
+  if (status === "voted") {
+    return (
+      <span title={title}>
+        <CheckCircle
+          className="w-4 h-4 text-accent"
+          aria-label={title}
+        />
+      </span>
+    )
+  }
+  // offline
+  return (
+    <span title={title}>
+      <Circle
+        className="w-3 h-3 text-muted-foreground opacity-50"
+        aria-label={title}
+      />
+    </span>
+  )
+}
+
 export default function PlayersPanel({ players, hostId, currentPlayerId, votesRevealed, deck }: PlayersPanelProps) {
   const { channel } = usePusherContext()
   const { showNotification } = useNotification()
-  const [localPlayers, setLocalPlayers] = useState(players)
+  const { currentStory } = useCurrentStory()
+  const storyId = currentStory?.id
+  const lastStoryId = useRef<string | undefined>(storyId)
+
+  const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
+  const [presenceReady, setPresenceReady] = useState(false)
+
+  // Only reset votes when story changes
+  useEffect(() => {
+    if (storyId !== lastStoryId.current) {
+      setLocalPlayers(
+        players.map((p) => ({
+          ...p,
+          vote: null,
+          hasVoted: false,
+        }))
+      )
+      lastStoryId.current = storyId
+    }
+  }, [players, storyId])
 
   useEffect(() => {
-    setLocalPlayers(players)
-  }, [players])
+    if (!channel) return
 
+    const handleSubscriptionSucceeded = () => {
+      const onlineIds = Object.keys(channel.members.members || {})
+      setLocalPlayers((prev) =>
+        prev.map((p) => ({
+          ...p,
+          isOnline: onlineIds.includes(p.id),
+        }))
+      )
+      setPresenceReady(true)
+    }
+
+    channel.bind("pusher:subscription_succeeded", handleSubscriptionSucceeded)
+
+    return () => {
+      channel.unbind("pusher:subscription_succeeded", handleSubscriptionSucceeded)
+    }
+  }, [channel])
+
+  // Handle vote updates
   useEffect(() => {
     if (!channel) return
 
@@ -42,42 +114,163 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
       setLocalPlayers((prev) =>
         prev.map((player) =>
           player.id === data.playerId
-            ? { ...player, vote: data.value }
+            ? {
+                ...player,
+                hasVoted: true,
+                vote: votesRevealed ? data.value : null,
+              }
             : player
         )
       )
     }
 
-    const handlePlayerJoined = (data: any) => {
-      showNotification(`${data.playerName} joined the room`, "info")
-    }
-
-    const handlePlayerLeft = (data: any) => {
-      showNotification(`${data.playerName} left the room`, "info")
-    }
-
-    // NEW: Reset votes when active story changes
-    const handleActiveStoryChanged = () => {
+    const handleVotesReset = () => {
       setLocalPlayers((prev) =>
         prev.map((player) => ({
           ...player,
           vote: null,
+          hasVoted: false,
         }))
       )
     }
 
     channel.bind("vote-submitted", handleVoteSubmitted)
-    channel.bind("player-joined", handlePlayerJoined)
-    channel.bind("player-left", handlePlayerLeft)
-    channel.bind("active-story-changed", handleActiveStoryChanged)
+    channel.bind("votes-reset", handleVotesReset)
 
     return () => {
       channel.unbind("vote-submitted", handleVoteSubmitted)
-      channel.unbind("player-joined", handlePlayerJoined)
-      channel.unbind("player-left", handlePlayerLeft)
+      channel.unbind("votes-reset", handleVotesReset)
+    }
+  }, [channel, votesRevealed])
+
+  // Real-time handlers
+  useEffect(() => {
+    if (!channel) return
+
+    const handlePlayerJoined = (data: any) => {
+      showNotification(`${data.playerName} joined the room`, "info")
+      setLocalPlayers((prev) => {
+        if (prev.some((p) => p.id === data.playerId)) {
+          return prev.map((p) =>
+            p.id === data.playerId ? { ...p, isOnline: true } : p
+          )
+        }
+        return [
+          ...prev,
+          {
+            id: data.playerId,
+            name: data.playerName,
+            emoji: "👤",
+            vote: null,
+            isOnline: true,
+            isHost: false,
+          },
+        ]
+      })
+    }
+
+    const handlePlayerLeft = (member: any) => {
+      setLocalPlayers((prev) =>
+        prev.map((p) =>
+          p.id === member.id ? { ...p, isOnline: false } : p
+        )
+      )
+      showNotification(`${member.info?.name || "A user"} left the room`, "info")
+    }
+
+    const handleActiveStoryChanged = () => {
+      setLocalPlayers((prev) =>
+        prev.map((player) => ({
+          ...player,
+          vote: null,
+          hasVoted: false,
+        }))
+      )
+    }
+
+    channel.bind("active-story-changed", handleActiveStoryChanged)
+    channel.bind("pusher:member_removed", handlePlayerLeft)
+
+    return () => {
       channel.unbind("active-story-changed", handleActiveStoryChanged)
+      channel.unbind("pusher:member_removed", handlePlayerLeft)
     }
   }, [channel, showNotification])
+
+  useEffect(() => {
+    if (!channel) return
+
+    const handleMemberAdded = (member: any) => {
+      setLocalPlayers((prev) => {
+        if (prev.some((p) => p.id === member.id)) {
+          return prev.map((p) =>
+            p.id === member.id ? { ...p, isOnline: true } : p
+          )
+        }
+        return [
+          ...prev,
+          {
+            id: member.id,
+            name: member.info?.name || "Anonymous",
+            emoji: member.info?.emoji || "👤",
+            vote: null,
+            isOnline: true,
+            isHost: false,
+          },
+        ]
+      })
+      if (member.id !== channel.members.me.id) {
+        showNotification(`${member.info?.name || "A user"} joined the room`, "info")
+      }
+    }
+
+    channel.bind("pusher:member_added", handleMemberAdded)
+
+    return () => {
+      channel.unbind("pusher:member_added", handleMemberAdded)
+    }
+  }, [channel, showNotification])
+
+  useEffect(() => {
+    if (!channel) return
+
+    const handlePlayerKicked = (data: { playerId: string; playerName?: string }) => {
+      if (data.playerId === currentPlayerId) {
+        showNotification("You were removed from the room by the host.", "error")
+        setTimeout(() => {
+          window.location.href = "/"
+        }, 2000)
+      } else {
+        setLocalPlayers((prev) => prev.filter((p) => p.id !== data.playerId))
+        showNotification(`${data.playerName || "A player"} was removed from the room.`, "info")
+      }
+    }
+
+    channel.bind("player-kicked", handlePlayerKicked)
+    return () => channel.unbind("player-kicked", handlePlayerKicked)
+  }, [channel, currentPlayerId, showNotification])
+
+  const handleKick = async (playerId: string, playerName: string) => {
+    if (!window.confirm(`Kick ${playerName} from the room?`)) return
+    try {
+      await kickPlayer(playerId)
+    } catch (err) {
+      showNotification(`Failed to kick ${playerName}`, "error")
+    }
+  }
+
+  if (!presenceReady) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Players</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-muted-foreground py-8">Loading players...</div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   const getInitials = (name: string) => {
     return name
@@ -88,69 +281,94 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
       .substring(0, 2)
   }
 
-  const getCardColor = (value: string) => {
-    const card = deck.find((card) => card.label === value)
-    return card?.color || "#f5f5f5"
-  }
-
-  const getCardEmoji = (value: string) => {
-    const card = deck.find((card) => card.label === value)
-    return card?.emoji || ""
-  }
+  // Sort: You/Host → online → offline
+  const sortedPlayers = [...localPlayers].sort((a, b) => {
+    if (a.id === currentPlayerId) return -1
+    if (b.id === currentPlayerId) return 1
+    if (a.isHost && !b.isHost) return -1
+    if (!a.isHost && b.isHost) return 1
+    if (a.isOnline && !b.isOnline) return -1
+    if (!a.isOnline && b.isOnline) return 1
+    return a.name.localeCompare(b.name)
+  })
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between">
-          <span>Players ({localPlayers.length})</span>
-        </CardTitle>
-      </CardHeader>
+    <Card className="section-card">
+      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
+        <Users className="h-5 w-5 text-accent/80" />
+        <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Players <span className="text-xs font-normal text-muted-foreground/70">({localPlayers.length})</span></h2>
+      </div>
+      <div className="mb-3" />
       <CardContent>
         <div className="space-y-2">
-          {localPlayers.map((player) => (
-            <div key={player.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50">
-              <div className="flex items-center space-x-3">
-                <Avatar className={!player.isOnline ? "opacity-50" : ""}>
-                  <AvatarFallback>{player.emoji || getInitials(player.name)}</AvatarFallback>
-                </Avatar>
-                <div className="text-sm font-medium flex items-center">
-                  {player.name}
-                  {player.id === currentPlayerId && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      You
-                    </Badge>
-                  )}
-                  {player.isHost && <Crown className="h-3 w-3 ml-1 text-amber-500" />}
-                </div>
-                {!player.isOnline && <p className="text-xs text-muted-foreground">Offline</p>}
-              </div>
+          {sortedPlayers.map((player) => {
+            const isCurrent = player.id === currentPlayerId
+            const isHost = player.isHost
+            const isOnline = player.isOnline
+            const hasVoted = player.hasVoted
 
-              <div>
-                {player.vote ? (
-                  votesRevealed ? (
-                    <Badge
-                      style={{
-                        backgroundColor: getCardColor(player.vote),
-                        color:
-                          getCardColor(player.vote) && getCardColor(player.vote) !== "#f5f5f5" ? "#fff" : undefined,
-                      }}
+            let status: "thinking" | "voted" | "offline"
+            let statusTitle = ""
+            if (!isOnline) {
+              status = "offline"
+              statusTitle = "Offline"
+            } else if (!hasVoted) {
+              status = "thinking"
+              statusTitle = "Estimating"
+            } else {
+              status = "voted"
+              statusTitle = "Voted"
+            }
+
+            return (
+              <div
+                key={player.id}
+                className={`card-base flex items-center justify-between px-3 py-2 transition
+                  ${isCurrent ? "border-2 border-accent shadow" : ""}
+                  ${!isOnline ? "opacity-50" : ""}
+                  hover:bg-accent/10 space-x-2`}
+                tabIndex={0}
+                aria-label={`${player.name}${isHost ? " (Host)" : ""}${isCurrent ? " (You)" : ""}${!isOnline ? " (Offline)" : ""}`}
+              >
+                {/* Left: Avatar, Name, Badges */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="w-9 h-9 shrink-0">
+                    <AvatarFallback>{player.emoji || getInitials(player.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-base truncate">{player.name}</span>
+                      {isCurrent && (
+                        <span className="btn-utility text-xs px-2 py-0.5">You</span>
+                      )}
+                      {isHost && <span title="Host" className="btn-utility text-xs px-2 py-0.5 flex items-center"><Crown className="h-4 w-4 text-accent mr-1" />Host</span>}
+                    </div>
+                  </div>
+                </div>
+                {/* Right: Status & Kick */}
+                <div className="flex items-center gap-2 min-w-[70px] justify-end">
+                  {hostId === currentPlayerId && player.id !== currentPlayerId && (
+                    <button
+                      className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm"
+                      title="Kick player"
+                      onClick={() => handleKick(player.id, player.name)}
                     >
-                      {getCardEmoji(player.vote) && <span className="mr-1">{getCardEmoji(player.vote)}</span>}
-                      {player.vote}
-                    </Badge>
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  )}
+                  {votesRevealed ? (
+                    player.vote ? (
+                      <span className="btn-utility ml-2 text-xs px-2 py-0.5" title={`Voted: ${player.vote}`}>{player.vote}</span>
+                    ) : (
+                      <StatusIcon status="thinking" title="No vote" />
+                    )
                   ) : (
-                    <Badge variant="outline">
-                      <Check className="h-3 w-3" />
-                    </Badge>
-                  )
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    Thinking...
-                  </Badge>
-                )}
+                    <StatusIcon status={hasVoted ? "voted" : "thinking"} title={hasVoted ? "Voted" : "Estimating"} />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </CardContent>
     </Card>

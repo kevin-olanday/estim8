@@ -1,58 +1,38 @@
 "use client"
 
-import type { Card as CardType } from "@/types/card"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
 
-interface CardProps {
-  card: CardType
+interface DeckCardProps {
+  label: string
   selected: boolean
   disabled?: boolean
   onClick: () => void
+  tabIndex?: number
+  onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void
+  className?: string
 }
 
-export function Card({ card, selected, disabled = false, onClick }: CardProps) {
-  const [isHovering, setIsHovering] = useState(false)
-
-  // Default color if none provided
-  const color = card.color || "#f5f5f5"
-
-  // Calculate text color based on background color brightness
-  const isLightColor = (color: string): boolean => {
-    // Convert hex to RGB
-    const hex = color.replace("#", "")
-    const r = Number.parseInt(hex.substring(0, 2), 16)
-    const g = Number.parseInt(hex.substring(2, 4), 16)
-    const b = Number.parseInt(hex.substring(4, 6), 16)
-
-    // Calculate brightness
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000
-    return brightness > 128
-  }
-
-  const textColor = isLightColor(color) ? "text-gray-900" : "text-white"
-
+export function DeckCard({ label, selected, disabled = false, onClick, tabIndex, onKeyDown, className }: DeckCardProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      tabIndex={tabIndex}
+      onKeyDown={onKeyDown}
+      aria-pressed={selected}
       className={cn(
-        "aspect-[2/3] rounded-lg flex flex-col items-center justify-center transition-all",
-        "border-2 hover:shadow-md",
-        selected ? "shadow-lg ring-2 ring-primary" : "shadow-sm",
+        "w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-32 lg:w-28 lg:h-36 aspect-[2/3] min-w-0 rounded-xl text-base sm:text-lg md:text-xl font-bold tracking-wide border flex items-center justify-center transition-all duration-150 ease-in-out outline-none",
+        selected
+          ? "bg-accent text-white border-accent shadow-lg scale-105"
+          : "bg-muted border-border text-foreground hover:border-accent-hover hover:shadow hover:-translate-y-[2px]",
         disabled && "opacity-50 cursor-not-allowed",
-        textColor,
+        "focus-visible:ring focus-visible:ring-ring focus-visible:ring-offset-2",
+        className
       )}
-      style={{
-        backgroundColor: color,
-        borderColor: selected ? "var(--primary)" : isHovering ? "var(--primary-50)" : color,
-        transform: selected ? "translateY(-4px)" : isHovering ? "translateY(-2px)" : "translateY(0)",
-      }}
     >
-      {card.emoji && <div className="text-2xl mb-1">{card.emoji}</div>}
-      <div className="text-xl font-bold">{card.label}</div>
+      {label}
     </button>
   )
 }

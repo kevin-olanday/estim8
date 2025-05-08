@@ -57,6 +57,11 @@ export async function createRoom(formData: FormData) {
     sameSite: "lax",
   })
 
+  cookiesStore.set("playerName", player.name, {
+    httpOnly: false, // must be accessible by the browser
+    sameSite: "lax",
+  })
+
   // Redirect to the room
   redirect(`/room/${roomCode}`)
 }
@@ -98,6 +103,11 @@ export async function joinRoom(formData: FormData) {
 
   cookiesStore.set("roomId", room.id, {
     httpOnly: true,
+    sameSite: "lax",
+  })
+
+  cookiesStore.set("playerName", player.name, {
+    httpOnly: false, // must be accessible by the browser
     sameSite: "lax",
   })
 
@@ -252,6 +262,7 @@ export async function getRoomData(roomCode: string) {
       votesRevealed: story.votesRevealed,
     })),
     completedStories: completedStoriesData,
+    currentUserId: playerId,
   }
 }
 
@@ -288,7 +299,7 @@ export async function updateDeck(deckType: DeckType, customDeck?: Deck) {
   })
 
   // Broadcast deck update via Pusher
-  await pusherServer.trigger(`room-${roomId}`, "deck-updated", {
+  await pusherServer.trigger(`presence-room-${roomId}`, "deck-updated", {
     deckType,
     deck: customDeck || DEFAULT_DECKS[deckType],
   })
@@ -328,10 +339,55 @@ export async function updateRoomSettings(settings: { autoRevealVotes?: boolean }
   })
 
   // Optionally, broadcast the settings update via Pusher if you want real-time updates
-  await pusherServer.trigger(`room-${roomId}`, "room-settings-updated", settings)
+  await pusherServer.trigger(`presence-room-${roomId}`, "room-settings-updated", settings)
 
   revalidatePath(`/room/[roomId]`)
 
+  return { success: true }
+}
+
+export async function kickPlayer(playerId: string) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const currentPlayerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !currentPlayerId) {
+    throw new Error("Not authenticated")
+  }
+
+  // Only the host can kick players
+  const host = await prisma.player.findFirst({
+    where: { roomId, isHost: true },
+  })
+  if (!host || host.id !== currentPlayerId) {
+    throw new Error("Only the host can kick players")
+  }
+
+  // Before deleting the player, fetch their name:
+  const kickedPlayer = await prisma.player.findUnique({
+    where: { id: playerId, roomId },
+  })
+
+  if (!kickedPlayer) throw new Error("Player not found")
+
+  // Remove the player from the DB
+  await prisma.player.delete({
+    where: { id: playerId, roomId },
+  })
+
+  // Optionally, remove their votes, etc.
+  await prisma.vote.deleteMany({ where: { playerId } })
+
+  // Broadcast to all clients that this player was kicked
+  await pusherServer.trigger(`presence-room-${roomId}`, "player-kicked", {
+    playerId,
+    playerName: kickedPlayer.name, // Add this line
+  })
+
+  // Optionally, clear cookies if the kicked player is the current user (for SSR actions)
+  // (Clients should also handle this event and clear their own session if kicked.)
+
+  revalidatePath(`/room/[roomId]`)
   return { success: true }
 }
 
