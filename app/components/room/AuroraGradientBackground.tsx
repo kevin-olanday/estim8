@@ -42,7 +42,7 @@ export default function AuroraGradientBackground() {
       ctx.clearRect(0, 0, width, height);
 
       // Animate points in slow, looping orbits
-      points.forEach((pt, i) => {
+      points.forEach((pt) => {
         pt.x += Math.cos(pt.angle + now * pt.speed * 0.00003) * 0.0005;
         pt.y += Math.sin(pt.angle + now * pt.speed * 0.00003) * 0.0005;
         // Keep within bounds

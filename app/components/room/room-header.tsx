@@ -13,9 +13,10 @@ interface RoomHeaderProps {
   roomCode: string
   roomName?: string
   isHost: boolean
+  hostName?: string
 }
 
-export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderProps) {
+export default function RoomHeader({ roomCode, roomName, isHost, hostName }: RoomHeaderProps) {
   const [copied, setCopied] = useState(false)
   const [shared, setShared] = useState(false)
   const { toast } = useToast()
@@ -27,7 +28,8 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
   const [editValue, setEditValue] = useState(roomName || "")
   const [saving, setSaving] = useState(false)
   const [hovered, setHovered] = useState(false)
-  const [currentRoomName, setCurrentRoomName] = useState(roomName || "")
+  const fallbackRoomName = hostName ? `${hostName}'s Room` : "Room"
+  const [currentRoomName, setCurrentRoomName] = useState(roomName || fallbackRoomName)
   const { pusher, channel } = usePusherContext?.() || {}
 
   useEffect(() => {
@@ -62,9 +64,9 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
   }, []);
 
   useEffect(() => {
-    setEditValue(roomName || "")
-    setCurrentRoomName(roomName || "")
-  }, [roomName])
+    setEditValue(roomName || fallbackRoomName)
+    setCurrentRoomName(roomName || fallbackRoomName)
+  }, [roomName, hostName])
 
   // Listen for real-time room name updates
   useEffect(() => {

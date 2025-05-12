@@ -293,10 +293,12 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
 
   if (!presenceReady) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Players</CardTitle>
-        </CardHeader>
+      <Card className="section-card">
+        <div className="panel-header">
+          <Users className="h-5 w-5 text-accent/80" />
+          <h2 className="panel-title">Players</h2>
+        </div>
+        <div className="mb-3" />
         <CardContent>
           <div className="text-center text-muted-foreground py-8">Loading players...</div>
         </CardContent>

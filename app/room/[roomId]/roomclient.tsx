@@ -262,7 +262,12 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <RoomHeader roomCode={roomData.code} roomName={roomData.name} isHost={roomData.isHost} />
+      <RoomHeader 
+        roomCode={roomData.code} 
+        roomName={roomData.name} 
+        isHost={roomData.isHost}
+        hostName={roomData.players?.find((p: any) => p.isHost)?.name}
+      />
       
       <main className="flex-1 flex justify-center">
         <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">

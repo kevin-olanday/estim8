@@ -42,12 +42,12 @@ export function PlayerAvatar({ name, avatarStyle, avatarSeed, size = "md", class
           src={avatarUrl}
           alt={name}
           className={cn(
-            "rounded-full border-2 border-border",
+            "rounded-full",
             sizeClasses[size]
           )}
         />
       ) : (
-        <div className={cn("rounded-full border-2 border-border bg-muted flex items-center justify-center text-lg font-bold", sizeClasses[size])}>
+        <div className={cn("rounded-full bg-muted flex items-center justify-center text-lg font-bold", sizeClasses[size])}>
           {name?.charAt(0).toUpperCase()}
         </div>
       )}
