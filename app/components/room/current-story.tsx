@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Edit, Save, FileText } from "lucide-react"
-import { updateStory } from "@/app/actions/story-actions"
+import { Edit, Save, FileText, SkipForward } from "lucide-react"
+import { updateStory, completeStory } from "@/app/actions/story-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import { cn } from "@/lib/utils"
@@ -110,10 +110,10 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
   if (!story) {
     return (
       <Card className="section-card min-h-[140px] flex flex-col">
-        <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl justify-between">
+        <div className="panel-header justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-accent/80" />
-            <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Current Story</h2>
+            <h2 className="panel-title">Current Story</h2>
           </div>
         </div>
         <CardContent className="flex-1 flex items-center justify-center p-6 text-center">
@@ -139,6 +139,15 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
     }
   }
 
+  const handleComplete = async () => {
+    if (!story || !isHost) return
+    try {
+      await completeStory(story.id)
+    } catch (error) {
+      console.error("Failed to complete story:", error)
+    }
+  }
+
   return (
     <Card className={cn(
       "section-card min-h-[140px] relative flex flex-col",
@@ -147,23 +156,25 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
     )}>
       {/* Gradient border overlay for animation */}
       <span className="absolute inset-0 rounded-2xl overflow-hidden border border-transparent pointer-events-none" />
-      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl justify-between">
+      <div className="panel-header justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-accent/80" />
-          <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Current Story</h2>
+          <h2 className="panel-title">Current Story</h2>
         </div>
-        {isHost && !isEditing && (
-          <button className="btn-utility flex items-center gap-1 text-sm font-semibold px-3 py-1 hover:text-accent transition-colors" onClick={() => setIsEditing(true)} type="button">
-            <Edit className="h-4 w-4" />
-            Edit
-          </button>
-        )}
-        {isHost && isEditing && (
-          <button className="btn btn-primary text-sm font-semibold" onClick={handleSave} disabled={isSaving} type="button">
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </button>
-        )}
+        <div className="flex gap-2 items-center">
+          {isHost && !isEditing && (
+            <button className="btn-utility flex items-center gap-1 text-sm font-semibold px-3 py-1 hover:text-accent transition-colors" onClick={() => setIsEditing(true)} type="button">
+              <Edit className="h-4 w-4" />
+              Edit
+            </button>
+          )}
+          {isHost && isEditing && (
+            <button className="btn btn-primary text-sm font-semibold" onClick={handleSave} disabled={isSaving} type="button">
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </button>
+          )}
+        </div>
       </div>
       <div className="mb-3" />
       <CardContent>

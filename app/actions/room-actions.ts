@@ -13,6 +13,8 @@ export async function createRoom(formData: FormData) {
   const roomName = formData.get("roomName") as string
   const hostName = formData.get("hostName") as string
   const deckTypeValue = (formData.get("deckType") as string) || DeckType.FIBONACCI
+  const avatarStyle = formData.get("avatarStyle") as string | null
+  const avatarSeed = formData.get("avatarSeed") as string | null
 
   if (!hostName) {
     throw new Error("Host name is required")
@@ -32,6 +34,7 @@ export async function createRoom(formData: FormData) {
       code: roomCode,
       deckType,
       deck: JSON.stringify(DEFAULT_DECKS[deckType]),
+      name: roomName,
     },
   })
 
@@ -41,6 +44,8 @@ export async function createRoom(formData: FormData) {
       name: hostName,
       isHost: true,
       roomId: room.id,
+      avatarStyle: avatarStyle || undefined,
+      avatarSeed: avatarSeed || undefined,
     },
   })
 
@@ -68,6 +73,8 @@ export async function createRoom(formData: FormData) {
 export async function joinRoom(formData: FormData) {
   const roomCode = formData.get("roomCode") as string
   const playerName = formData.get("playerName") as string
+  const avatarStyle = formData.get("avatarStyle") as string | null
+  const avatarSeed = formData.get("avatarSeed") as string | null
 
   if (!roomCode || !playerName) {
     return { error: "Room code and name are required" }
@@ -90,6 +97,8 @@ export async function joinRoom(formData: FormData) {
       name: playerName,
       isHost: false,
       roomId: room.id,
+      avatarStyle: avatarStyle || undefined,
+      avatarSeed: avatarSeed || undefined,
     },
   })
 
@@ -114,6 +123,8 @@ export async function joinRoom(formData: FormData) {
   await pusherServer.trigger(`presence-room-${room.id}`, "player-joined", {
     playerId: player.id,
     playerName: player.name,
+    avatarStyle: player.avatarStyle,
+    avatarSeed: player.avatarSeed,
   })
 
   // Redirect to the room
@@ -198,6 +209,8 @@ export async function getRoomData(roomCode: string) {
     isOnline: true, // We'll update this with Pusher presence
     // Get vote for active story if it exists
     vote: activeStory ? activeStory.votes.find((vote) => vote.playerId === player.id)?.choice || null : null,
+    avatarStyle: player.avatarStyle || null,
+    avatarSeed: player.avatarSeed || null,
   }))
 
   // Get completed stories
@@ -233,6 +246,7 @@ export async function getRoomData(roomCode: string) {
   return {
     id: room.id,
     code: room.code,
+    name: room.name,
     isHost: currentPlayer.isHost,
     currentPlayerId: currentPlayer.id,
     hostId: host.id,
@@ -251,15 +265,17 @@ export async function getRoomData(roomCode: string) {
       : null,
     currentVotes,
     players,
-    stories: room.stories.map((story) => ({
-      id: story.id,
-      title: story.title,
-      description: story.description || null,
-      status: story.status,
-      active: story.status === "active",
-      completed: story.status === "completed",
-      votesRevealed: story.votesRevealed,
-    })),
+    stories: room.stories
+      .filter((story) => story.status !== "completed")
+      .map((story) => ({
+        id: story.id,
+        title: story.title,
+        description: story.description || null,
+        status: story.status,
+        active: story.status === "active",
+        completed: story.status === "completed",
+        votesRevealed: story.votesRevealed,
+      })),
     completedStories: completedStoriesData,
     currentUserId: playerId,
   }

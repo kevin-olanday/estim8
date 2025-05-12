@@ -1,6 +1,9 @@
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 import Pusher from "pusher"
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
@@ -25,8 +28,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
-  const user_id = playerId
-  const user_info = { name: playerName }
+  // Fetch player from DB to get avatar info
+  const player = await prisma.player.findUnique({ where: { id: playerId } });
+  const user_id = playerId;
+  const user_info = {
+    name: playerName,
+    emoji: player?.emoji || "👤",
+    avatarStyle: player?.avatarStyle || null,
+    avatarSeed: player?.avatarSeed || null,
+  };
 
   const auth = pusher.authorizeChannel(socket_id, channel_name, {
     user_id,

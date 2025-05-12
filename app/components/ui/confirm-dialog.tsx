@@ -15,9 +15,9 @@ import {
 import type { ButtonProps } from "@/components/ui/button"
 
 interface ConfirmDialogProps {
-  title: string
-  description: string
-  actionText: string
+  title: ReactNode
+  description: ReactNode
+  actionText: ReactNode
   cancelText?: string
   onConfirm: () => void
   children: ReactNode

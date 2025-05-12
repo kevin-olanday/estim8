@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DEFAULT_DECKS, DeckType } from "@/types/card"
 import type { Card as CardType, Deck } from "@/types/card"
 import { DeckCard } from "@/app/components/room/card"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 
 interface HostControlsProps {
   currentStoryId: string | null
@@ -49,6 +50,7 @@ export default function HostControls({
   )
   const [newCard, setNewCard] = useState<CardType>({ label: "" })
   const [isDeckSubmitting, setIsDeckSubmitting] = useState(false)
+  const [showRevealConfirm, setShowRevealConfirm] = useState(false)
 
   const handleAddStory = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,6 +131,15 @@ export default function HostControls({
     }
   }
 
+  const handleRevealVotesClick = () => {
+    if (!currentStoryId || votesRevealed) return;
+    if (!allPlayersVoted) {
+      setShowRevealConfirm(true);
+    } else {
+      handleRevealVotes();
+    }
+  }
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -157,9 +168,9 @@ export default function HostControls({
 
   return (
     <Card className="section-card">
-      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
+      <div className="panel-header">
         <Settings className="h-5 w-5 text-accent/80" />
-        <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Host Controls</h2>
+        <h2 className="panel-title">Host Controls</h2>
       </div>
       <div className="mb-3" />
       <CardContent className="space-y-6">
@@ -167,89 +178,71 @@ export default function HostControls({
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 pl-0.5">
             Manage Session
           </div>
-          <Dialog open={isAddingStory} onOpenChange={setIsAddingStory}>
-            <DialogTrigger asChild>
-              <button
-                className="w-full bg-gradient-to-r from-accent to-accent-hover text-white font-semibold py-2 rounded-lg shadow hover:shadow-lg transition-all duration-150 hover:from-accent-hover hover:to-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
-                type="button"
-              >
-                <PlusCircle className="h-4 w-4 mr-2 inline" />
-                Add Story
-              </button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Story</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddStory} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Input
-                    value={storyTitle}
-                    onChange={(e) => setStoryTitle(e.target.value)}
-                    placeholder="Story title"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Textarea
-                    value={storyDescription}
-                    onChange={(e) => setStoryDescription(e.target.value)}
-                    placeholder="Story description (optional)"
-                    rows={4}
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Adding..." : "Add Story"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-          <div className="my-3 border-b border-border opacity-30" />
+          <div className="panel-divider" />
           <div className="space-y-2">
-            {(votesRevealed || allPlayersVoted) && (
-              <button
-                className={
-                  `w-full bg-muted border border-border text-foreground font-medium py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/30 flex items-center justify-center gap-2 ` +
-                  (votesRevealed ? 'hover:bg-muted/80' : '')
-                }
-                onClick={votesRevealed ? handleResetVotes : handleRevealVotes}
-                type="button"
-              >
-                {votesRevealed ? (
-                  <>
-                    <RotateCcw className="h-4 w-4 mr-2 inline" />
-                    Reset Votes
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4 mr-2 inline" />
-                    Reveal Votes
-                  </>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={votesRevealed ? handleResetVotes : handleRevealVotesClick}
+                    disabled={!hasVotes && !votesRevealed}
+                  >
+                    {votesRevealed ? (
+                      <>
+                        <RotateCcw className="h-4 w-4" />
+                        Reset Votes
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4" />
+                        Reveal Votes
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                {!hasVotes && !votesRevealed && (
+                  <TooltipContent side="top" align="center">
+                    No votes have been submitted yet.
+                  </TooltipContent>
                 )}
-              </button>
+              </Tooltip>
+            </TooltipProvider>
+            {showRevealConfirm && (
+              <Dialog open={showRevealConfirm} onOpenChange={setShowRevealConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Reveal Votes Early?</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4 text-base text-muted-foreground">
+                    Some players haven't voted yet. Are you sure you want to reveal the votes?
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="secondary" onClick={() => setShowRevealConfirm(false)} type="button">
+                      Cancel
+                    </Button>
+                    <Button variant="default" onClick={() => { setShowRevealConfirm(false); handleRevealVotes(); }} type="button">
+                      Reveal Anyway
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
-            <button
-              className="w-full bg-secondary/20 border border-secondary text-secondary font-medium py-2 rounded-lg hover:bg-secondary/30 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary/30"
-              onClick={handleCompleteStory}
-              disabled={!currentStoryId}
-              type="button"
-            >
-              <SkipForward className="h-4 w-4 mr-2 inline" />
-              Complete Story
-            </button>
-            <button
-              className="w-full bg-secondary/10 border border-secondary text-secondary font-medium py-2 rounded-lg hover:bg-secondary/20 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary/30"
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-full gap-2"
               onClick={() => setIsDeckDialogOpen(true)}
               type="button"
             >
-              <Settings className="h-4 w-4 mr-2 inline" />
+              <Settings className="h-4 w-4" />
               Customize Deck
-            </button>
+            </Button>
           </div>
         </div>
-        <div className="my-3 border-b border-border opacity-30" />
+        <div className="panel-divider" />
         <Dialog open={isDeckDialogOpen} onOpenChange={setIsDeckDialogOpen}>
           <DialogTrigger asChild></DialogTrigger>
           <DialogContent className="max-w-2xl">
@@ -309,20 +302,20 @@ export default function HostControls({
                           />
                         </div>
                       </div>
-                      <button className="btn btn-primary" onClick={handleAddCard} disabled={!newCard.label} type="button">
-                        <Plus className="h-4 w-4 mr-2" />
+                      <Button variant="default" onClick={handleAddCard} disabled={!newCard.label} type="button" className="gap-2">
+                        <Plus className="h-4 w-4" />
                         Add Card
-                      </button>
+                      </Button>
                     </div>
                     <div className="card-base p-4">
                       <h3 className="font-medium mb-2">Current Cards</h3>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {customDeck.map((card, index) => (
                           <div key={index} className="flex items-center justify-between p-2 border rounded-md">
-                              <span>{card.label}</span>
-                            <button className="btn btn-ghost" onClick={() => handleRemoveCard(index)} type="button">
+                            <span>{card.label}</span>
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveCard(index)} type="button">
                               <Trash2 className="h-4 w-4 text-destructive" />
-                            </button>
+                            </Button>
                           </div>
                         ))}
                         {customDeck.length === 0 && (
@@ -336,12 +329,12 @@ export default function HostControls({
                 }
               </Tabs>
               <div className="flex justify-end gap-2 pt-4">
-                <button className="btn btn-secondary" onClick={() => setIsDeckDialogOpen(false)} type="button">
+                <Button variant="secondary" onClick={() => setIsDeckDialogOpen(false)} type="button">
                   Cancel
-                </button>
-                <button className="btn btn-primary" onClick={handleSaveDeck} disabled={isDeckSubmitting} type="button">
+                </Button>
+                <Button variant="default" onClick={handleSaveDeck} disabled={isDeckSubmitting} type="button">
                   {isDeckSubmitting ? "Saving..." : "Save Deck"}
-                </button>
+                </Button>
               </div>
             </div>
           </DialogContent>

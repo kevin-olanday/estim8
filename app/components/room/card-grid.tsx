@@ -14,6 +14,7 @@ interface CardGridProps {
   storyId?: string;
   handleVote: (label: string) => void;
   handleCardKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => void;
+  disabled?: boolean;
 }
 
 const CardGrid: React.FC<CardGridProps> = ({
@@ -24,6 +25,7 @@ const CardGrid: React.FC<CardGridProps> = ({
   storyId,
   handleVote,
   handleCardKeyDown,
+  disabled = false,
 }) => {
   if (!deck || deck.length === 0) return null;
   return (
@@ -33,7 +35,7 @@ const CardGrid: React.FC<CardGridProps> = ({
           key={card.label}
           label={card.label}
           selected={selectedCard === card.label}
-          disabled={isVoting || !storyId}
+          disabled={isVoting || !storyId || disabled}
           onClick={() => {
             handleVote(card.label);
           }}

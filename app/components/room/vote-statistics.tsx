@@ -2,22 +2,36 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BarChart2, Repeat } from "lucide-react"
+import { BarChart2, Repeat, SkipForward } from "lucide-react"
 import type { Deck } from "@/types/card"
 import { motion } from "framer-motion"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import React from "react"
 
 interface VoteStatisticsProps {
   votes: {
     playerId: string
     playerName: string
     value: string
+    avatarStyle?: string | null
+    avatarSeed?: string | null
   }[]
   deck: Deck
   currentUserId?: string
+  players?: {
+    id: string
+    name: string
+    avatarStyle?: string | null
+    avatarSeed?: string | null
+  }[]
+  isHost?: boolean
+  onComplete?: () => void
+  votesRevealed?: boolean
+  deckTheme?: string
+  completeDisabled?: boolean
 }
 
-export function VoteStatistics({ votes, deck, currentUserId }: VoteStatisticsProps) {
+export function VoteStatistics({ votes, deck, currentUserId, players, isHost, onComplete, votesRevealed, deckTheme, completeDisabled = false }: VoteStatisticsProps) {
   if (votes.length === 0) {
     return null
   }
@@ -87,15 +101,85 @@ export function VoteStatistics({ votes, deck, currentUserId }: VoteStatisticsPro
   // Sort by count descending
   const sortedVoteEntries = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])
 
+  // Get voter names and avatars for each value
+  const getVoterInfo = (value: string) =>
+    votes.filter((v) => v.value === value).map((v) => ({
+      name: v.playerName || v.playerId,
+      avatarStyle: v.avatarStyle,
+      avatarSeed: v.avatarSeed
+    }))
+
   // Get voter names for each value
   const getVoterNames = (value: string) =>
     votes.filter((v) => v.value === value).map((v) => v.playerName || v.playerId).join(", ")
 
+  // Find non-voters
+  const nonVoters = players
+    ? players.filter(p => !votes.some(v => v.playerId === p.id))
+    : [];
+
+  // Keyboard shortcut for host: Enter or Cmd+Enter
+  React.useEffect(() => {
+    if (!isHost || !votesRevealed || !onComplete) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.key === 'Enter' && (e.metaKey || e.ctrlKey)) || (e.key === 'Enter' && !e.metaKey && !e.ctrlKey)) {
+        e.preventDefault();
+        onComplete();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isHost, votesRevealed, onComplete]);
+
   return (
     <TooltipProvider>
-      <div className="rounded-lg bg-muted/20 p-5 shadow-sm space-y-4 border">
-        {/* 1. Header */}
-        <div className="text-lg font-semibold mb-2 text-center">Estimation Results</div>
+      <div className="rounded-lg bg-muted/20 pt-2 pb-4 px-4 shadow-sm space-y-4 border">
+        {/* 1. Header with Complete Story button and icon */}
+        <div className="panel-header justify-between mb-2 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <BarChart2 className="h-5 w-5 text-accent/80" />
+            <h2 className="panel-title flex-1 truncate">Estimation Results</h2>
+          </div>
+          {isHost && votesRevealed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="min-w-fit flex justify-end"
+            >
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex items-center justify-center gap-2 px-3 py-1.5 rounded-md font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent/40 shadow-lg"
+                      style={{
+                        background: deckTheme || 'linear-gradient(90deg, #6366f1, #9333ea)',
+                        color: '#fff',
+                        boxShadow: '0 2px 16px 0 rgba(99,102,241,0.10) inset',
+                      }}
+                      onMouseOver={e => e.currentTarget.style.boxShadow = '0 0 10px 2px rgba(99,102,241,0.25), 0 2px 16px 0 rgba(99,102,241,0.10) inset'}
+                      onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 16px 0 rgba(99,102,241,0.10) inset'}
+                      onFocus={e => e.currentTarget.style.boxShadow = '0 0 10px 2px rgba(99,102,241,0.25), 0 2px 16px 0 rgba(99,102,241,0.10) inset'}
+                      onBlur={e => e.currentTarget.style.boxShadow = '0 2px 16px 0 rgba(99,102,241,0.10) inset'}
+                      onClick={onComplete}
+                      type="button"
+                      disabled={completeDisabled || votes.length === 0}
+                      title="Complete Story"
+                    >
+                      <SkipForward className="h-5 w-5 sm:mr-2 -ml-1 align-middle" />
+                      <span className="hidden sm:inline align-middle">Complete Story</span>
+                    </button>
+                  </TooltipTrigger>
+                  {votes.length === 0 && (
+                    <TooltipContent side="top" align="center">
+                      Waiting for team to vote
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            </motion.div>
+          )}
+        </div>
 
         {/* 2. Key Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center mb-2">
@@ -160,10 +244,26 @@ export function VoteStatistics({ votes, deck, currentUserId }: VoteStatisticsPro
                     </motion.div>
                   </div>
                   <span className="font-medium text-sm min-w-[40px] text-right tabular-nums">{percent}%</span>
-                  {/* Tooltip with voter names */}
+                  {/* Tooltip with voter names and avatars */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="ml-1 cursor-help text-muted-foreground text-xs">👤</span>
+                      <div className="ml-1 cursor-help flex items-center gap-1">
+                        {getVoterInfo(value).map((voter, idx) => (
+                          <div key={idx} className="w-5 h-5 rounded-full overflow-hidden">
+                            {voter.avatarStyle && voter.avatarSeed ? (
+                              <img
+                                src={`https://api.dicebear.com/7.x/${voter.avatarStyle}/svg?seed=${encodeURIComponent(voter.avatarSeed)}`}
+                                alt={voter.name + "'s avatar"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted flex items-center justify-center text-[10px]">
+                                {voter.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center">
                       {getVoterNames(value) || "No voters"}
@@ -174,6 +274,33 @@ export function VoteStatistics({ votes, deck, currentUserId }: VoteStatisticsPro
             })}
           </div>
         </div>
+
+        {/* Non-voter indicator */}
+        {nonVoters.length > 0 && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-muted-foreground">No vote:</span>
+            {nonVoters.map((player, idx) => (
+              <Tooltip key={player.id}>
+                <TooltipTrigger asChild>
+                  <div className="w-5 h-5 rounded-full overflow-hidden opacity-50 bg-muted flex items-center justify-center border border-border">
+                    {player.avatarStyle && player.avatarSeed ? (
+                      <img
+                        src={`https://api.dicebear.com/7.x/${player.avatarStyle}/svg?seed=${encodeURIComponent(player.avatarSeed)}`}
+                        alt={player.name + "'s avatar"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-[10px]">⏳</span>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="center">
+                  {player.name} has not voted
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        )}
       </div>
     </TooltipProvider>
   )

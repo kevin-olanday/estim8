@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { LogOut, Loader, CheckCircle, Circle, Crown, Users, User } from "lucide-react"
+import { LogOut, Loader, CheckCircle, Circle, Crown, Users, User, Trash2, PlusCircle, ArrowLeft } from "lucide-react"
 import { usePusherContext } from "@/app/context/pusher-context"
-import { useNotification } from "@/app/context/notification-context"
-import { kickPlayer } from "@/app/actions/room-actions"
+import { useToast } from "@/hooks/use-toast"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import type { Deck } from "@/types/card"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { kickPlayer } from "@/app/actions/room-actions"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 
 interface Player {
   id: string
@@ -20,6 +21,8 @@ interface Player {
   isOnline: boolean
   isHost: boolean
   hasVoted?: boolean
+  avatarStyle?: string | null
+  avatarSeed?: string | null
 }
 
 interface PlayersPanelProps {
@@ -30,7 +33,7 @@ interface PlayersPanelProps {
   deck: Deck
 }
 
-function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline"; title: string }) {
+function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline" | "no-vote"; title: string }) {
   if (status === "thinking") {
     return (
       <span title={title}>
@@ -51,6 +54,17 @@ function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline
       </span>
     )
   }
+  if (status === "no-vote") {
+    return (
+      <span title={title}>
+        {/* Muted circle-slash (ban) icon for no vote */}
+        <svg className="w-4 h-4 text-muted-foreground opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-label={title}>
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+          <line x1="5" y1="19" x2="19" y2="5" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      </span>
+    )
+  }
   // offline
   return (
     <span title={title}>
@@ -64,7 +78,7 @@ function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline
 
 export default function PlayersPanel({ players, hostId, currentPlayerId, votesRevealed, deck }: PlayersPanelProps) {
   const { channel } = usePusherContext()
-  const { showNotification } = useNotification()
+  const { toast } = useToast()
   const { currentStory } = useCurrentStory()
   const storyId = currentStory?.id
   const lastStoryId = useRef<string | undefined>(storyId)
@@ -111,6 +125,20 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
   useEffect(() => {
     if (!channel) return
 
+    const handleVotesRevealed = (data: any) => {
+      if (!data || !Array.isArray(data.votes)) return;
+      setLocalPlayers((prev) =>
+        prev.map((player) => {
+          const revealed = data.votes.find((v: any) => v.playerId === player.id);
+          return {
+            ...player,
+            vote: revealed ? revealed.value : null,
+            hasVoted: !!revealed,
+          };
+        })
+      );
+    };
+
     const handleVoteSubmitted = (data: any) => {
       setLocalPlayers((prev) =>
         prev.map((player) =>
@@ -135,10 +163,12 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
       )
     }
 
+    channel.bind("votes-revealed", handleVotesRevealed)
     channel.bind("vote-submitted", handleVoteSubmitted)
     channel.bind("votes-reset", handleVotesReset)
 
     return () => {
+      channel.unbind("votes-revealed", handleVotesRevealed)
       channel.unbind("vote-submitted", handleVoteSubmitted)
       channel.unbind("votes-reset", handleVotesReset)
     }
@@ -149,7 +179,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
     if (!channel) return
 
     const handlePlayerJoined = (data: any) => {
-      showNotification(`${data.playerName} joined the room`, "info")
+      toast({ description: `${data.playerName} joined the room` })
       setLocalPlayers((prev) => {
         if (prev.some((p) => p.id === data.playerId)) {
           return prev.map((p) =>
@@ -165,6 +195,8 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             vote: null,
             isOnline: true,
             isHost: false,
+            avatarStyle: data.avatarStyle || null,
+            avatarSeed: data.avatarSeed || null,
           },
         ]
       })
@@ -176,7 +208,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
           p.id === member.id ? { ...p, isOnline: false } : p
         )
       )
-      showNotification(`${member.info?.name || "A user"} left the room`, "info")
+      toast({ description: `${member.info?.name || "A user"} left the room` })
     }
 
     const handleActiveStoryChanged = () => {
@@ -196,7 +228,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
       channel.unbind("active-story-changed", handleActiveStoryChanged)
       channel.unbind("pusher:member_removed", handlePlayerLeft)
     }
-  }, [channel, showNotification])
+  }, [channel, toast])
 
   useEffect(() => {
     if (!channel) return
@@ -217,11 +249,13 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             vote: null,
             isOnline: true,
             isHost: false,
+            avatarStyle: member.info?.avatarStyle || null,
+            avatarSeed: member.info?.avatarSeed || null,
           },
         ]
       })
       if (member.id !== channel.members.me.id) {
-        showNotification(`${member.info?.name || "A user"} joined the room`, "info")
+        toast({ description: `${member.info?.name || "A user"} joined the room` })
       }
     }
 
@@ -230,33 +264,32 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
     return () => {
       channel.unbind("pusher:member_added", handleMemberAdded)
     }
-  }, [channel, showNotification])
+  }, [channel, toast])
 
   useEffect(() => {
     if (!channel) return
 
     const handlePlayerKicked = (data: { playerId: string; playerName?: string }) => {
       if (data.playerId === currentPlayerId) {
-        showNotification("You were removed from the room by the host.", "error")
+        toast({ description: "You were removed from the room by the host.", variant: "destructive" })
         setTimeout(() => {
           window.location.href = "/"
         }, 2000)
       } else {
         setLocalPlayers((prev) => prev.filter((p) => p.id !== data.playerId))
-        showNotification(`${data.playerName || "A player"} was removed from the room.`, "info")
+        toast({ description: `${data.playerName || "A player"} was removed from the room.` })
       }
     }
 
     channel.bind("player-kicked", handlePlayerKicked)
     return () => channel.unbind("player-kicked", handlePlayerKicked)
-  }, [channel, currentPlayerId, showNotification])
+  }, [channel, currentPlayerId, toast])
 
   const handleKick = async (playerId: string, playerName: string) => {
-    if (!window.confirm(`Kick ${playerName} from the room?`)) return
     try {
       await kickPlayer(playerId)
     } catch (err) {
-      showNotification(`Failed to kick ${playerName}`, "error")
+      toast({ description: `Failed to kick ${playerName}`, variant: "destructive" })
     }
   }
 
@@ -295,9 +328,9 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
 
   return (
     <Card className="section-card">
-      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
+      <div className="panel-header">
         <Users className="h-5 w-5 text-accent/80" />
-        <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Players <span className="text-xs font-normal text-muted-foreground/70">({localPlayers.length})</span></h2>
+        <h2 className="panel-title">Players <span className="text-xs font-normal text-muted-foreground/70">({localPlayers.length})</span></h2>
       </div>
       <div className="mb-3" />
       <CardContent className="space-y-6">
@@ -324,14 +357,22 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             return (
               <div
                 key={player.id}
-                className={`section-card px-2 py-1 rounded-xl border border-border bg-muted/60 flex items-center gap-3 min-w-0 group transition ${isCurrent ? "border-2 border-accent shadow" : ""} ${!isOnline ? "opacity-50" : ""} hover:bg-accent/10`}
+                className={`section-card flex items-center gap-3 min-w-0 group transition ${isCurrent ? "border-2 border-accent shadow" : ""} ${!isOnline ? "opacity-50" : ""} hover:bg-accent/10`}
                 tabIndex={0}
                 aria-label={`${player.name}${isHost ? " (Host)" : ""}${isCurrent ? " (You)" : ""}${!isOnline ? " (Offline)" : ""}`}
               >
                 {/* Left: Avatar, Name, Badges, Kick */}
                 <div className="flex-1 min-w-0 flex items-center gap-3">
                   <Avatar className="w-9 h-9 shrink-0">
-                    <AvatarFallback>{player.emoji || getInitials(player.name)}</AvatarFallback>
+                    {player.avatarStyle && player.avatarSeed ? (
+                      <img
+                        src={`https://api.dicebear.com/7.x/${player.avatarStyle}/svg?seed=${encodeURIComponent(player.avatarSeed)}`}
+                        alt={player.name + "'s avatar"}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <AvatarFallback>{player.emoji || getInitials(player.name)}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div className="flex-1 min-w-0 flex items-center gap-2 h-9">
                     <span className="text-sm font-semibold truncate">{player.name}</span>
@@ -344,13 +385,21 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                   </div>
                   {/* Kick button (if present) */}
                   {hostId === currentPlayerId && player.id !== currentPlayerId && (
-                    <button
-                      className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm flex-shrink-0 flex items-center justify-center"
-                      title="Kick player"
-                      onClick={() => handleKick(player.id, player.name)}
+                    <ConfirmDialog
+                      title={<span className="flex items-center gap-2 text-red-600"><LogOut className="w-5 h-5" /> Kick Player</span>}
+                      description={<span>Are you sure you want to remove <b>{player.name}</b> from the room? This action cannot be undone.</span>}
+                      actionText={<span className="flex items-center gap-1"><LogOut className="w-4 h-4" /> Kick</span>}
+                      cancelText="Cancel"
+                      onConfirm={async () => { await handleKick(player.id, player.name) }}
                     >
-                      <LogOut className="w-4 h-4" />
-                    </button>
+                      <button
+                        className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm flex-shrink-0 flex items-center justify-center"
+                        title="Kick player"
+                        type="button"
+                      >
+                        <LogOut className="w-4 h-4" />
+                      </button>
+                    </ConfirmDialog>
                   )}
                 </div>
                 {/* Right: Status Icon */}
@@ -359,7 +408,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                     player.vote ? (
                       <span className="btn-utility text-xs px-2 py-0.5 flex items-center" title={`Voted: ${player.vote}`}>{player.vote}</span>
                     ) : (
-                      <StatusIcon status="thinking" title="No vote" />
+                      <StatusIcon status="no-vote" title="Did not vote" />
                     )
                   ) : (
                     <StatusIcon status={hasVoted ? "voted" : "thinking"} title={hasVoted ? "Voted" : "Estimating"} />

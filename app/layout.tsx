@@ -79,17 +79,14 @@ export default function RootLayout({
                   Designed and developed with
                   <span className="text-pink-400">❤️</span>
                   by
-                  <span className="bg-accent/20 text-accent px-2 py-0.5 rounded-full font-semibold">Kevin Olanday</span>.
-                  View the project on
                   <a
-                    href="https://github.com/kevinolang/estim8"
+                    href="https://KevinOlanday.com"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-1 bg-muted px-2 py-0.5 rounded-full font-semibold text-xs text-foreground hover:bg-accent/30 transition"
+                    className="ml-2 px-3 py-1 rounded-full font-bold text-sm bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow hover:brightness-110 transition border border-accent/40"
                   >
-                    GitHub
+                    Kevin Olanday
                   </a>
-                  .
                 </span>
               </footer>
             </main>

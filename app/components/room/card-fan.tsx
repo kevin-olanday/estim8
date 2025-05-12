@@ -28,6 +28,8 @@ interface CardFanProps {
   deckTheme: string;
   gradientPresets: GradientPreset[];
   getContrastYIQ: (hex: string) => 'text-black' | 'text-white';
+  dealAnimKey?: number;
+  disabled?: boolean;
 }
 
 const CardFan: React.FC<CardFanProps> = ({
@@ -44,14 +46,15 @@ const CardFan: React.FC<CardFanProps> = ({
   deckTheme,
   gradientPresets,
   getContrastYIQ,
+  dealAnimKey,
+  disabled = false,
 }) => {
   // --- Fly-in animation state ---
-  const [dealAnimKey, setDealAnimKey] = useState(0);
+  const [dealAnimKeyState, setDealAnimKeyState] = useState(0);
   const [dealingIndex, setDealingIndex] = useState(-1);
   const [dealt, setDealt] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    setDealAnimKey((k) => k + 1);
     setDealingIndex(-1);
     setDealt(new Set());
     if (!deck || deck.length === 0) return;
@@ -61,7 +64,7 @@ const CardFan: React.FC<CardFanProps> = ({
       if (!cancelled) setDealingIndex(0);
     }, 80);
     return () => { cancelled = true; };
-  }, [storyId, deck]);
+  }, [storyId, dealAnimKey]);
 
   if (!deck || deck.length === 0) return null;
   const center = Math.floor(deck.length / 2);
@@ -73,8 +76,8 @@ const CardFan: React.FC<CardFanProps> = ({
   // Sort by xOffset so cards further right render last (on top)
   const sorted = cardsWithMeta.sort((a, b) => a.xOffset - b.xOffset);
   return (
-    <div className="overflow-x-auto w-full max-w-full relative pb-2 hidden sm:block">
-      <div className={cn("sm:relative sm:flex sm:items-center sm:justify-center sm:h-[32rem] w-full min-w-[600px] sm:min-w-0 overflow-visible", isVoting && "opacity-60 pointer-events-none") }>
+    <div className={cn("overflow-x-auto w-full max-w-full relative pb-2 hidden sm:block", disabled && "pointer-events-none opacity-60") }>
+      <div className={cn("sm:relative sm:flex sm:items-center sm:justify-center sm:h-[28rem] w-full min-w-[600px] sm:min-w-0 overflow-visible", (isVoting || disabled) && "opacity-60 pointer-events-none") }>
         {isVoting && (
           <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
             <svg className="animate-spin h-12 w-12 text-blue-400 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -135,7 +138,7 @@ const CardFan: React.FC<CardFanProps> = ({
                 "focus-visible:ring focus-visible:ring-blue-400 focus-visible:ring-offset-2"
               )}
               type="button"
-              disabled={isVoting || !storyId}
+              disabled={isVoting || !storyId || disabled}
               tabIndex={0}
               onClick={() => {
                 handleVote(card.label);

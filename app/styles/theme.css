@@ -77,6 +77,25 @@
   .section-card {
     @apply rounded-2xl border border-border bg-surface px-2 py-1 shadow;
   }
+  .section-card-muted {
+    background-color: var(--color-surface);
+  }
+  .section-card-muted50 {
+    background-color: var(--color-surface);
+  }
+  .section-card-accent {
+    @apply border-accent;
+  }
+  .panel-header {
+    @apply flex items-center gap-2 py-3 px-4 border-b border-border rounded-t-2xl;
+    background-color: var(--color-surface);
+  }
+  .panel-title {
+    @apply text-lg font-bold text-muted-foreground tracking-tight;
+  }
+  .panel-divider {
+    @apply my-3 border-b border-border opacity-30;
+  }
 
   .section-header {
     @apply text-xl font-semibold text-muted-foreground mb-4 tracking-tight;

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useRef, useState, useActionState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 import { Loader2, User, Hash, Crown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner"
-import { useFormState } from "react-dom"
+import { AvatarBuilder } from "@/app/components/room/avatar-builder"
 
 export default function Home() {
   const { toast } = useToast()
@@ -22,7 +22,14 @@ export default function Home() {
   const [joinLoading, setJoinLoading] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const joinRoomReducer = async (_state: any, formData: FormData) => joinRoom(formData);
-  const [joinState, joinFormAction] = useFormState(joinRoomReducer, null);
+  const [joinState, joinFormAction] = useActionState(joinRoomReducer, null);
+  // Avatar state for join form
+  const [avatar, setAvatar] = useState({ style: "big-smile", seed: "" });
+  // Avatar state for create form (host)
+  const [hostAvatar, setHostAvatar] = useState({ style: "big-smile", seed: "" });
+  // Add state for avatar options
+  const [avatarOptions, setAvatarOptions] = useState({})
+  const [hostAvatarOptions, setHostAvatarOptions] = useState({})
 
   // Autofocus name input on tab change or mount
   React.useEffect(() => {
@@ -38,13 +45,16 @@ export default function Home() {
     try {
       const result: any = await createRoom(formData)
       if (result?.error) {
-        toast({ title: "Error", description: result.error, variant: "destructive" })
+        toast({ title: "Error", description: result.error })
       } else {
         toast({ title: "Room created!", description: "Your Planning Poker room is ready." })
-        // Optionally redirect or clear form
       }
-    } catch (e) {
-      toast({ title: "Error", description: "Failed to create room.", variant: "destructive" })
+    } catch (e: any) {
+      // Ignore redirect errors
+      if (e?.message?.includes('NEXT_REDIRECT')) {
+        return;
+      }
+      toast({ title: "Error", description: "Failed to create room." })
     } finally {
       setLoading(false)
     }
@@ -120,6 +130,7 @@ export default function Home() {
                   <form action={joinFormAction}>
                     <CardContent>
                       <div className="grid w-full items-center gap-4">
+                        {/* Room Code Input */}
                         <div className="flex flex-col space-y-1">
                           <div className="relative flex items-center">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
@@ -136,10 +147,19 @@ export default function Home() {
                             <span className="text-xs text-red-500 mt-1 ml-2 text-left">{joinState.error}</span>
                           )}
                         </div>
+                        {/* User Name Input */}
                         <div className="flex flex-col space-y-1.5 relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
                           <Input name="playerName" placeholder="Your name" className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                         </div>
+                        {/* Avatar Customization Section */}
+                        <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2">
+                          <legend className="px-2 text-sm font-semibold text-muted-foreground mb-2">Customize Avatar</legend>
+                          <AvatarBuilder onAvatarChange={(_, options) => setAvatarOptions(options)} />
+                          {/* Hidden input to submit avatar info as JSON */}
+                          <input type="hidden" name="avatarStyle" value="big-smile" />
+                          <input type="hidden" name="avatarSeed" value={JSON.stringify(avatarOptions)} />
+                        </fieldset>
                       </div>
                     </CardContent>
                     <CardFooter>
@@ -159,14 +179,24 @@ export default function Home() {
                   <form onSubmit={handleCreateRoom}>
                     <CardContent>
                       <div className="grid w-full items-center gap-4">
+                        {/* Room Name Input */}
                         <div className="flex flex-col space-y-1.5 relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><Crown size={18} /></span>
                           <Input name="roomName" placeholder="Room name (optional)" className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                         </div>
+                        {/* Host Name Input */}
                         <div className="flex flex-col space-y-1.5 relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
                           <Input ref={nameInputRef} name="hostName" placeholder="Your name (as host)" required className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                         </div>
+                        {/* Avatar Customization Section */}
+                        <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2">
+                          <legend className="px-2 text-sm font-semibold text-muted-foreground mb-2">Customize Avatar</legend>
+                          <AvatarBuilder onAvatarChange={(_, options) => setHostAvatarOptions(options)} />
+                          <input type="hidden" name="avatarStyle" value="big-smile" />
+                          <input type="hidden" name="avatarSeed" value={JSON.stringify(hostAvatarOptions)} />
+                        </fieldset>
+                        {/* Deck Type */}
                         <div className="flex flex-col space-y-1.5">
                           <label className="text-sm font-medium text-white">Deck Type</label>
                           <Select name="deckType" defaultValue={DeckType.FIBONACCI}>

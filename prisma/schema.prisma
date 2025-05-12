@@ -58,6 +58,9 @@ model Story {
   votes         Vote[]
   activeInRoom  Room?      @relation("ActiveStory")
 
+  manualOverride Boolean?  @default(false)
+  originalVotes  String?
+
   @@index([roomId])
 }
 
@@ -72,6 +75,9 @@ model Player {
   updatedAt DateTime   @default(now())
 
   votes     Vote[]
+
+  avatarStyle String?  // DiceBear style
+  avatarSeed  String?  // DiceBear seed
 
   @@index([roomId])
 }

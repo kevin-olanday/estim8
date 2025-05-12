@@ -10,7 +10,7 @@ import { Confetti } from "@/app/components/ui/confetti"
 import { DeckCard } from "@/app/components/room/card"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, BarChart2, Repeat, Hand } from "lucide-react"
+import { CheckCircle, BarChart2, Repeat, Hand, SkipForward } from "lucide-react"
 import { easeOut, motion } from "framer-motion"
 import type { Deck } from "@/types/card"
 import { cn } from "@/lib/utils"
@@ -18,6 +18,10 @@ import ThemeSelectorModal from "./theme-selector-modal"
 import CardFan from "./card-fan"
 import CardGrid from "./card-grid"
 import DefaultThemeBackground from "@/app/components/room/DefaultThemeBackground"
+import ConsensusBanner from "@/app/components/room/ConsensusBanner"
+import { completeStory, completeStoryWithScore } from "@/app/actions/story-actions"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 interface Vote {
   playerId: string
@@ -32,16 +36,22 @@ interface VotingPanelProps {
     playerId: string
     playerName: string
     value: string
+    avatarStyle?: string | null
+    avatarSeed?: string | null
   }[]
   players: {
     id: string
     name: string
+    avatarStyle?: string | null
+    avatarSeed?: string | null
   }[]
   roomData: {
     currentVotes: Vote[]
     players: {
       id: string
       name: string
+      avatarStyle?: string | null
+      avatarSeed?: string | null
     }[]
     currentUserId?: string
   }
@@ -76,6 +86,12 @@ export default function VotingPanel({
   const [showThemeModal, setShowThemeModal] = useState(false)
   const [allInCelebration, setAllInCelebration] = useState(false);
   const prevAllIn = useRef(false);
+  const [showConsensusConfetti, setShowConsensusConfetti] = useState(false);
+  const [dealAnimKey, setDealAnimKey] = useState(0);
+  const [showManualOverrideModal, setShowManualOverrideModal] = useState(false)
+  const [medianScore, setMedianScore] = useState<number | null>(null)
+  const [overrideScore, setOverrideScore] = useState<number | null>(null)
+  const [pendingStoryId, setPendingStoryId] = useState<string | null>(null)
 
   // Reset selectedCard and hide statistics when the active story changes
   useEffect(() => {
@@ -104,6 +120,7 @@ export default function VotingPanel({
     const handleVotesReset = () => {
       setSelectedCard(null)
       setShowConfetti(false)
+      setDealAnimKey((k) => k + 1);
       // Reset the context
       setCurrentStory((prev: any) => {
         if (!prev) return prev;
@@ -385,19 +402,84 @@ export default function VotingPanel({
     }
   }
 
+  // Detect consensus when votes are revealed
+  useEffect(() => {
+    // Only trigger when votes are revealed and there is consensus
+    const voteCounts = votes.reduce((acc, vote) => {
+      acc[vote.value] = (acc[vote.value] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const allSame = Object.keys(voteCounts).length === 1 && votes.length > 1;
+    if (currentStory?.votesRevealed && allSame) {
+      setShowConsensusConfetti(true);
+      const timeout = setTimeout(() => setShowConsensusConfetti(false), 3000);
+      return () => clearTimeout(timeout);
+    } else {
+      setShowConsensusConfetti(false);
+    }
+  }, [votes, currentStory?.votesRevealed]);
+
+  const handleCompleteStory = async () => {
+    console.log('[VotingPanel] handleCompleteStory called', { currentStory, votes });
+    if (!currentStory?.id || !isHost) return
+    if (!votes || votes.length === 0) return
+    const voteValues = votes.map(v => Number(v.value))
+    const hasConsensus = voteValues.every(v => v === voteValues[0])
+    if (hasConsensus) {
+      await completeStory(currentStory.id)
+    } else {
+      const median = calculateMedian(voteValues)
+      setMedianScore(median)
+      setOverrideScore(median)
+      setPendingStoryId(currentStory.id)
+      setShowManualOverrideModal(true)
+    }
+  }
+
+  // Determine if deck interaction should be disabled
+  const deckInteractionDisabled = !!currentStory?.votesRevealed && currentStory?.status !== "completed";
+
+  const confirmManualOverride = async () => {
+    if (!pendingStoryId || overrideScore === null) return
+    try {
+      await completeStoryWithScore(pendingStoryId, overrideScore, {
+        manualOverride: true,
+        originalVotes: votes
+      })
+      setShowManualOverrideModal(false)
+      setPendingStoryId(null)
+      setMedianScore(null)
+      setOverrideScore(null)
+    } catch (error) {
+      console.error("Failed to complete story with manual override:", error)
+    }
+  }
+
+  // Add calculateMedian helper
+  const calculateMedian = (arr: number[]): number => {
+    const sorted = [...arr].sort((a, b) => a - b)
+    const mid = Math.floor(sorted.length / 2)
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+  }
+
   return (
     <>
       {/* Show fog/ambient background for all dark themes */}
       <DefaultThemeBackground active={gradientPresets.find(g => g.value === deckTheme)?.category === 'dark'} />
-      <div className="section-card space-y-4">
-        {showConfetti && <Confetti />}
-        <div className="flex items-center justify-between py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
+      <div className="section-card space-y-2">
+        {/* Consensus Achieved Animation */}
+        {showConsensusConfetti && (
+          <>
+            <ConsensusBanner show={showConsensusConfetti} />
+            <Confetti key="consensus" />
+          </>
+        )}
+        <div className="panel-header justify-between">
           <div className="flex items-center gap-2">
             <Hand className="h-4 w-4 text-accent/80" />
-            <h2 className="text-base font-semibold text-muted-foreground tracking-tight">Your Estimate</h2>
+            <h2 className="panel-title text-base">Your Estimate</h2>
           </div>
           <div className="flex gap-2 items-center">
-            <span className="label-base">Card Theme:</span>
             <button
               type="button"
               className="btn btn-utility"
@@ -407,7 +489,6 @@ export default function VotingPanel({
             </button>
           </div>
         </div>
-        <div className="mb-3" />
         {/* Theme Selector Modal */}
         <ThemeSelectorModal
           show={showThemeModal}
@@ -418,36 +499,53 @@ export default function VotingPanel({
           handleSurpriseMe={() => { handleSurpriseMe(); setShowThemeModal(false); }}
         />
         {/* Hand of Cards Layout (desktop), grid fallback (mobile) */}
-        <CardFan
-          deck={deck}
-          selectedCard={selectedCard}
-          setSelectedCard={setSelectedCard}
-          isVoting={isVoting}
-          storyId={storyId}
-          handleVote={handleVote}
-          handleCardKeyDown={handleCardKeyDown}
-          hovered={hovered}
-          setHovered={setHovered}
-          keyboardHovered={keyboardHovered}
-          deckTheme={deckTheme}
-          gradientPresets={gradientPresets}
-          getContrastYIQ={getContrastYIQ}
-        />
+        <div className="mb-2">
+          <CardFan
+            deck={deck}
+            selectedCard={selectedCard}
+            setSelectedCard={setSelectedCard}
+            isVoting={isVoting}
+            storyId={storyId}
+            handleVote={handleVote}
+            handleCardKeyDown={handleCardKeyDown}
+            hovered={hovered}
+            setHovered={setHovered}
+            keyboardHovered={keyboardHovered}
+            deckTheme={deckTheme}
+            gradientPresets={gradientPresets}
+            getContrastYIQ={getContrastYIQ}
+            dealAnimKey={dealAnimKey}
+            disabled={deckInteractionDisabled}
+          />
+        </div>
         {/* Mobile grid fallback */}
-        <CardGrid
-          deck={deck}
-          selectedCard={selectedCard}
-          setSelectedCard={setSelectedCard}
-          isVoting={isVoting}
-          storyId={storyId}
-          handleVote={handleVote}
-          handleCardKeyDown={handleCardKeyDown}
-        />
+        <div className="mb-2">
+          <CardGrid
+            deck={deck}
+            selectedCard={selectedCard}
+            setSelectedCard={setSelectedCard}
+            isVoting={isVoting}
+            storyId={storyId}
+            handleVote={handleVote}
+            handleCardKeyDown={handleCardKeyDown}
+            disabled={deckInteractionDisabled}
+          />
+        </div>
 
         {/* --- Vote Reveal Section --- */}
         {currentStory?.votesRevealed ? (
           <motion.div>
-            <VoteStatistics votes={votes} deck={deck} currentUserId={roomData?.currentUserId} />
+            <VoteStatistics
+              votes={votes}
+              deck={deck}
+              currentUserId={roomData?.currentUserId}
+              players={players}
+              isHost={isHost}
+              onComplete={handleCompleteStory}
+              votesRevealed={currentStory?.votesRevealed}
+              deckTheme={deckTheme}
+              completeDisabled={!currentStory?.id || !currentStory?.votesRevealed}
+            />
           </motion.div>
         ) : (
           players.length > 1 && (
@@ -489,6 +587,42 @@ export default function VotingPanel({
           )
         )}
       </div>
+      {/* Manual Override Modal */}
+      <Dialog open={showManualOverrideModal} onOpenChange={setShowManualOverrideModal}>
+        <DialogContent className="max-w-md rounded-2xl border-2 border-accent shadow-xl">
+          <DialogHeader>
+            <DialogTitle>
+              <span className="flex items-center gap-2 text-accent"><BarChart2 className="w-5 h-5" /> Complete Story Without Consensus</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 text-base text-muted-foreground">
+            The median score is: <b>{medianScore}</b><br />
+            You can override this score if needed.
+          </div>
+          <div className="space-y-3 mt-2">
+            <Input
+              type="number"
+              value={overrideScore || ''}
+              onChange={(e) => setOverrideScore(parseFloat(e.target.value))}
+              placeholder="Override Score"
+            />
+            <button
+              className="w-full btn btn-primary flex items-center justify-center gap-2 py-2 rounded-lg"
+              onClick={confirmManualOverride}
+              type="button"
+            >
+              Confirm
+            </button>
+            <button
+              className="w-full btn btn-secondary flex items-center justify-center gap-2 py-2 rounded-lg"
+              onClick={() => setShowManualOverrideModal(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

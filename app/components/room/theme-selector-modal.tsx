@@ -48,8 +48,10 @@ const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/90"
+          className="fixed inset-0 z-50 flex items-center justify-center"
         >
+          {/* Overlay for dim/blur effect, consistent with Dialog */}
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-0" />
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -59,7 +61,7 @@ const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
               duration: 0.3,
               bounce: 0.2
             }}
-            className="bg-muted rounded-xl shadow-xl p-6 w-full max-w-md relative border border-border/50"
+            className="section-card p-6 w-full max-w-md relative z-10"
           >
             <button 
               className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
@@ -67,16 +69,14 @@ const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
             >
               ×
             </button>
-            <div className="flex items-center justify-between py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
-              <div className="flex items-center gap-2">
-                <Palette className="h-4 w-4 text-accent/80" />
-                <h3 className="text-base font-semibold text-muted-foreground tracking-tight">Choose Card Theme</h3>
-              </div>
+            <div className="panel-header">
+              <Palette className="h-4 w-4 text-accent/80" />
+              <h2 className="panel-title">Choose Card Theme</h2>
             </div>
             <div className="mb-3" />
             
             {/* Bright Themes Section */}
-            <div className="border-t border-border/40 my-4" />
+            <div className="panel-divider" />
             <h4 className="font-semibold tracking-wider text-muted-foreground text-sm uppercase mb-3">
               Bright Themes
             </h4>
@@ -107,7 +107,7 @@ const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
             </div>
 
             {/* Dark Themes Section */}
-            <div className="border-t border-border/40 my-4" />
+            <div className="panel-divider" />
             <h4 className="font-semibold tracking-wider text-muted-foreground text-sm uppercase mb-3">
               Dark Themes
             </h4>
@@ -141,17 +141,17 @@ const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full mt-6 mb-3 px-4 py-2.5 rounded-lg bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden group"
+              className="btn btn-primary w-full mt-6 mb-3"
               onClick={handleSurpriseMe}
+              type="button"
             >
-              <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
               🎲 Surprise Me
             </motion.button>
 
             {/* Close Button */}
             <button
               type="button"
-              className="w-full px-4 py-2.5 rounded-lg border border-border text-muted-foreground text-sm font-medium hover:bg-surface/50 hover:text-foreground transition-colors"
+              className="btn btn-secondary w-full"
               onClick={onClose}
             >
               Close

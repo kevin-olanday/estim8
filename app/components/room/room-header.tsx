@@ -120,23 +120,33 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
   return (
     <>
       {/* Neon/gradient bar for distinction */}
-      <div className="w-full h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-accent shadow-[0_0_16px_2px_theme('colors.accent')]" />
+      <div className="w-full " />
       <header
         className="w-full shadow-xl border-b border-border bg-background px-6 py-4 transition-all"
         style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
       >
         <div className="mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
           {/* Left: Logo, App Name, Slogan */}
-          
           <div className="flex flex-row items-center min-w-0 w-full sm:w-auto">
-       
             <div className="flex flex-row items-center gap-3 min-w-0">
-            <img src="/images/placeholder-logo.png" alt="EstiM8 logo" className="h-12 md:h-12 mb-2 mx-auto filter invert" />             
+              <img
+                src="/images/placeholder-logo.png"
+                alt="EstiM8 logo"
+                className="h-12 md:h-12 mb-2 mx-auto filter invert cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent"
+                tabIndex={0}
+                onClick={handleLogoClick}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogoClick(e as any); }}
+                aria-label="Go to home screen"
+              />
               <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight hidden sm:inline-block">
                 | Real-Time Planning Poker for Agile Teams
               </span>
             </div>
-            {roomName && <span className="ml-2 text-muted-foreground truncate max-w-xs hidden sm:inline">{roomName}</span>}
+            {roomName && (
+              <span className="ml-3 text-lg font-semibold text-foreground truncate max-w-xs block sm:inline" title={roomName}>
+                {roomName}
+              </span>
+            )}
           </div>
           {/* Right: Controls */}
           <div className="flex items-center gap-1 flex-shrink-0 mt-4 sm:mt-0 self-center sm:self-auto">
@@ -199,25 +209,15 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
           </div>
         </div>
       </header>
-      {/* Confirmation Dialog */}
+      {/* Leave Room Confirmation Dialog */}
       {showLeaveDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-background border border-border rounded-xl shadow-xl p-6 max-w-xs w-full flex flex-col items-center">
-            <div className="text-lg font-semibold mb-2">Leave Room?</div>
-            <div className="text-muted-foreground mb-4 text-center">You are about to leave the room. Are you sure?</div>
+            <div className="text-lg font-semibold mb-2 text-center">Leave Room?</div>
+            <div className="text-sm text-muted-foreground mb-4 text-center">Are you sure you want to leave the room? You will be redirected to the home screen.</div>
             <div className="flex gap-3 w-full justify-center">
-              <button
-                className="btn-utility px-4 py-1 text-base"
-                onClick={() => setShowLeaveDialog(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-utility bg-accent text-white border-accent px-4 py-1 text-base hover:bg-accent/90"
-                onClick={confirmLeave}
-              >
-                Leave Room
-              </button>
+              <button className="btn btn-secondary w-1/2" onClick={() => setShowLeaveDialog(false)}>Cancel</button>
+              <button className="btn btn-primary w-1/2" onClick={confirmLeave}>Leave</button>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import ReactConfetti from "react-confetti"
 import { useWindowSize } from "@/app/hooks/use-window-size"
+import { AnimatePresence, motion } from "framer-motion"
 
 interface ConfettiProps {
   duration?: number
@@ -20,7 +21,19 @@ export function Confetti({ duration = 3000 }: ConfettiProps) {
     return () => clearTimeout(timer)
   }, [duration])
 
-  if (!isActive) return null
-
-  return <ReactConfetti width={width} height={height} recycle={false} numberOfPieces={200} gravity={0.2} />
+  return (
+    <AnimatePresence>
+      {isActive && (
+        <motion.div
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
+          style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50 }}
+        >
+          <ReactConfetti width={width} height={height} recycle={false} numberOfPieces={200} gravity={0.2} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
 }

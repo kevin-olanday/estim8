@@ -29,7 +29,8 @@ export default function RoomClient({ roomData }: { roomData: any }) {
 function RoomClientInner({ roomData }: { roomData: any }) {
   const { channel } = usePusherContext()
   const { currentStory, setCurrentStory } = useCurrentStory()
-  const [localVotes, setLocalVotes] = useState<{ playerId: string; playerName: string; value: string }[]>([])
+  const [localVotes, setLocalVotes] = useState<{ playerId: string; playerName: string; value: string; storyId: string }[]>([])
+  const [localCompletedStories, setLocalCompletedStories] = useState(roomData.completedStories || [])
 
   const handleVoteRemoved = useCallback(
     (data: { playerId: string; storyId: string }) => {
@@ -47,14 +48,19 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
   // Keep localVotes in sync with initial data and handle real-time updates
   useEffect(() => {
-    // Map currentVotes to include playerName
-    const votesWithNames = (roomData.currentVotes || []).map((v: any) => {
-      if (v.playerName) return v;
+    // Map currentVotes to include playerName and avatar info
+    const votesWithAvatars = (roomData.currentVotes || []).map((v: any) => {
       const player = roomData.players.find((p: any) => p.id === v.playerId);
-      return { ...v, playerName: player ? player.name : "" };
+      return {
+        ...v,
+        playerName: v.playerName || (player ? player.name : ""),
+        avatarStyle: v.avatarStyle || (player ? player.avatarStyle : null),
+        avatarSeed: v.avatarSeed || (player ? player.avatarSeed : null),
+        storyId: v.storyId || "",
+      };
     });
-    console.log('[ROOMCLIENT] Initializing votes from roomData:', votesWithNames);
-    setLocalVotes(votesWithNames);
+    console.log('[ROOMCLIENT] Initializing votes from roomData:', votesWithAvatars);
+    setLocalVotes(votesWithAvatars);
   }, [roomData.currentVotes, roomData.players]);
 
   // Listen for real-time vote submissions and story changes
@@ -67,14 +73,17 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     console.log('[ROOMCLIENT] Setting up vote handlers for channel:', channel.name);
 
     const handleVoteSubmitted = (data: any) => {
-      console.log('[ROOMCLIENT] vote-submitted event received:', data);
       const player = roomData.players.find((p: any) => p.id === data.playerId);
       const playerName = player ? player.name : "";
+      // Fallback to currentStory?.id if data.storyId is missing
+      const sid = data.storyId || currentStory?.id || "";
       setLocalVotes((prev: any[]) => {
-        // Replace or add the vote for this player
-        const otherVotes = prev.filter(v => v.playerId !== data.playerId);
-        const newVotes = [...otherVotes, { playerId: data.playerId, playerName, value: data.value }];
-        console.log('[ROOMCLIENT] Updated localVotes:', newVotes);
+        const otherVotes = prev.filter(v => v.playerId !== data.playerId || v.storyId !== sid);
+        const newVotes = [
+          ...otherVotes,
+          { playerId: data.playerId, playerName, value: data.value, storyId: sid }
+        ];
+        console.log('[RoomClient] Updated localVotes (vote-submitted):', newVotes);
         return newVotes;
       });
     }
@@ -163,19 +172,25 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     console.log('[ROOMCLIENT] Binding votes-revealed to channel:', channel.name);
 
     const handleVotesRevealed = (data: any) => {
-      console.log('[ROOMCLIENT] votes-revealed handler called', data);
       setCurrentStory((prev: any) => {
-        console.log('[ROOMCLIENT] setCurrentStory called, prev:', prev);
         if (!prev) return prev;
         return { ...prev, votesRevealed: true };
       });
+      // Fallback to currentStory?.id if data.storyId is missing
+      const sid = data.storyId || currentStory?.id || "";
       if (Array.isArray(data.votes)) {
-        const votesWithNames = data.votes.map((v: any) => {
-          if (v.playerName) return v;
+        const votesWithAvatars = data.votes.map((v: any) => {
           const player = roomData.players.find((p: any) => p.id === v.playerId);
-          return { ...v, playerName: player ? player.name : "" };
+          return {
+            ...v,
+            playerName: v.playerName || (player ? player.name : ""),
+            avatarStyle: v.avatarStyle || (player ? player.avatarStyle : null),
+            avatarSeed: v.avatarSeed || (player ? player.avatarSeed : null),
+            storyId: sid
+          };
         });
-        setLocalVotes(votesWithNames);
+        console.log('[RoomClient] Updated localVotes (votes-revealed):', votesWithAvatars);
+        setLocalVotes(votesWithAvatars);
       }
     };
 
@@ -187,33 +202,51 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     };
   }, [channel, roomData.players, setCurrentStory]);
 
+  // Update local completed stories when roomData changes
+  useEffect(() => {
+    setLocalCompletedStories(roomData.completedStories || [])
+  }, [roomData.completedStories])
+
+  // Add story completed handler
   useEffect(() => {
     if (!channel) return
 
     const handleStoryCompleted = (data: any) => {
-      console.log('[ROOMCLIENT] Story completed event received:', data);
+      console.log('[RoomClient] Story completed event received:', data)
       
       // Clear votes
-      setLocalVotes([]);
+      setLocalVotes([])
       
       // Force reset current story to null 
-      setCurrentStory(null);
-      
-      // Additional check to verify the story was cleared
-      setTimeout(() => {
-        console.log('[ROOMCLIENT] Current story after completion:', { currentStory });
-      }, 100);
+      setCurrentStory(null)
+
+      // Update completed stories
+      setLocalCompletedStories((prev: any[]) => {
+        const storyToComplete = roomData.stories.find((s: any) => s.id === data.id)
+        if (!storyToComplete) return prev
+
+        const completedStory = {
+          ...storyToComplete,
+          completed: true,
+          active: false,
+          finalScore: data.finalScore,
+          manualOverride: data.manualOverride,
+          votes: data.votes || []
+        }
+
+        return [completedStory, ...prev]
+      })
     }
 
     channel.bind("story-completed", handleStoryCompleted)
     return () => channel.unbind("story-completed", handleStoryCompleted)
-  }, [channel, setCurrentStory])
+  }, [channel, setCurrentStory, roomData.stories])
 
   useEffect(() => {
     if (!channel) return;
 
     const handleVotesReset = () => {
-      setLocalVotes([] as { playerId: string; playerName: string; value: string }[]);
+      setLocalVotes([] as { playerId: string; playerName: string; value: string; storyId: string }[]);
       setCurrentStory((prev: any) => prev ? { ...prev, votesRevealed: false } : prev);
     };
 
@@ -221,39 +254,20 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     return () => channel.unbind("votes-reset", handleVotesReset);
   }, [channel, setCurrentStory]);
 
-  // Use completedStories from roomData which already has votes included
-  const completedStories = roomData.completedStories || []
-
-  const removeVote = async (storyId: string) => {
-    console.log('[RoomClient] removeVote called with storyId:', storyId);
-    try {
-      const response = await fetch(`/api/rooms/${roomData.id}/votes`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ storyId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove vote');
-      }
-
-      const data = await response.json();
-      console.log('[RoomClient] removeVote response:', data);
-    } catch (error) {
-      console.error('[RoomClient] Error removing vote:', error);
-      throw error;
-    }
-  };
+  // Filter localVotes for the current story before passing to StoriesPanel
+  const activeStoryId = currentStory?.id;
+  const revealedVotes = localVotes.filter(v => v.storyId === activeStoryId);
+  console.log('[RoomClient] localVotes:', localVotes);
+  console.log('[RoomClient] activeStoryId:', activeStoryId);
+  console.log('[RoomClient] revealedVotes:', revealedVotes);
 
   return (
     <div className="flex flex-col min-h-screen">
-      <RoomHeader roomCode={roomData.code} isHost={roomData.isHost} />
+      <RoomHeader roomCode={roomData.code} roomName={roomData.name} isHost={roomData.isHost} />
       
       <main className="flex-1 flex justify-center">
         <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="bg-surface rounded-3xl p-6 shadow-xl">
+          <div className="bg-surface rounded-3xl p-6 shadow-xl w-[80vw] max-w-7xl mx-auto">
             <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
@@ -274,7 +288,12 @@ function RoomClientInner({ roomData }: { roomData: any }) {
               
               {/* Right Column (1/3 width on large screens) */}
               <aside className="space-y-6">
-                <StoriesPanel stories={roomData.stories} isHost={roomData.isHost} />
+                <StoriesPanel
+                  stories={roomData.stories}
+                  completedStories={localCompletedStories}
+                  isHost={roomData.isHost}
+                  revealedVotes={revealedVotes}
+                />
                 <PlayersPanel
                   players={roomData.players}
                   hostId={roomData.hostId}
@@ -293,7 +312,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                     currentDeck={roomData.deck}
                   />
                 )}
-                <HistoryPanel completedStories={completedStories} />
               </aside>
             </div>
           </div>
