@@ -1,8 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Copy, Share2, Moon, Sun, Pencil, X, Check } from "lucide-react"
+import { Copy, Share2, Pencil, X, Check } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"

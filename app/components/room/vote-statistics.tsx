@@ -1,8 +1,6 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { BarChart2, Repeat, SkipForward } from "lucide-react"
+import { BarChart2, SkipForward } from "lucide-react"
 import type { Deck } from "@/types/card"
 import { motion } from "framer-motion"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"

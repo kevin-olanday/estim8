@@ -12,7 +12,6 @@ import { Separator } from "@/components/ui/separator"
 import { WelcomeMessage } from "@/app/components/room/welcome-message"
 import { CurrentStoryProvider } from "@/app/context/current-story-context"
 import { PusherProvider } from "@/app/context/pusher-context"
-import { HistoryPanel } from "@/app/components/room/history-panel"
 import { useCurrentStory } from "@/app/context/current-story-context"
 
 export default function RoomClient({ roomData }: { roomData: any }) {
