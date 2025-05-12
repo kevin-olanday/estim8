@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { NotificationProvider } from "@/app/context/notification-context"
 import "./styles/theme.css"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,17 +22,78 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Basic SEO */}
+        <title>EstiM8 - Agile Planning Poker</title>
+        <meta name="description" content="Real-time Planning Poker for agile teams. Plan smarter, together." />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#6366f1" />
+        {/* Favicon & Manifest */}
+        <link rel="icon" href="/v9/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/v9/favicon-96x96.png" />
+        <link rel="icon" type="image/svg+xml" href="/v9/favicon.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/v9/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+        {/* Open Graph Tags */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="EstiM8 - Agile Planning Poker" />
+        <meta property="og:description" content="Real-time Planning Poker for agile teams. Plan smarter, together." />
+        <meta property="og:image" content="/v9/web-app-manifest-512x512.png" />
+        <meta property="og:url" content="https://estim8.app" />
+        {/* Twitter Card Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="EstiM8 - Agile Planning Poker" />
+        <meta name="twitter:description" content="Real-time Planning Poker for agile teams. Plan smarter, together." />
+        <meta name="twitter:image" content="/v9/web-app-manifest-512x512.png" />
+        {/* PWA / iOS Web App Support */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="EstiM8" />
+        {/* Structured Data (JSON-LD) */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebApplication',
+          name: 'EstiM8',
+          url: 'https://estim8.app',
+          description: 'Real-time Planning Poker for agile teams. Plan smarter, together.',
+          applicationCategory: 'ProductivityApplication',
+          operatingSystem: 'All',
+          offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+          },
+          image: 'https://estim8.app/v9/web-app-manifest-512x512.png',
+        }) }} />
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <NotificationProvider>
-            <main className="flex flex-col min-h-screen">
-              <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col">
+            <main>
+              <div>
                 {children}
               </div>
-              <footer className="mt-auto py-6 text-center text-sm text-muted-foreground">
-                {/* Footer content will go here in a later step */}
+              <footer className="fixed left-0 bottom-0 w-full border-t border-border bg-background py-4 flex justify-center items-center text-sm text-muted-foreground z-50">
+                <span className="flex items-center gap-2">
+                  Designed and developed with
+                  <span className="text-pink-400">❤️</span>
+                  by
+                  <span className="bg-accent/20 text-accent px-2 py-0.5 rounded-full font-semibold">Kevin Olanday</span>.
+                  View the project on
+                  <a
+                    href="https://github.com/kevinolang/estim8"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-1 bg-muted px-2 py-0.5 rounded-full font-semibold text-xs text-foreground hover:bg-accent/30 transition"
+                  >
+                    GitHub
+                  </a>
+                  .
+                </span>
               </footer>
             </main>
+            <Toaster />
           </NotificationProvider>
         </ThemeProvider>
       </body>

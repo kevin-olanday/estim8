@@ -2,10 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
-import { PrismaClient } from "@prisma/client"
 import { pusherServer } from "@/lib/pusher-server"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
 
 export async function addStory(title: string, description: string | null = null) {
   const cookiesStore = await cookies()
@@ -181,14 +179,62 @@ export async function completeStory(storyId: string) {
     throw new Error("Only the host can complete stories")
   }
 
-  // Mark the story as completed (use status)
+  // Get all votes for the story
+  const votes = await prisma.vote.findMany({
+    where: { storyId },
+  });
+
+  // Calculate the final score based on votes
+  let finalScore: number | null = null;
+  
+  if (votes.length > 0) {
+    // Count votes by value
+    const voteCounts: Record<string, number> = {};
+    let numericVotes: number[] = [];
+    
+    // Gather vote data
+    votes.forEach(vote => {
+      const value = vote.choice;
+      voteCounts[value] = (voteCounts[value] || 0) + 1;
+      
+      // Track numeric votes for average calculation if needed
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        numericVotes.push(numValue);
+      }
+    });
+    
+    // Find the most common vote
+    let mostCommonValue = "";
+    let highestCount = 0;
+    
+    Object.entries(voteCounts).forEach(([value, count]) => {
+      if (count > highestCount) {
+        mostCommonValue = value;
+        highestCount = count;
+      }
+    });
+    
+    // If most common value is numeric, use it as final score
+    const numericMostCommon = parseFloat(mostCommonValue);
+    if (!isNaN(numericMostCommon)) {
+      finalScore = numericMostCommon;
+    } 
+    // Otherwise calculate average of numeric votes as fallback
+    else if (numericVotes.length > 0) {
+      finalScore = numericVotes.reduce((sum, value) => sum + value, 0) / numericVotes.length;
+    }
+  }
+
+  // Mark the story as completed and set the final score
   const story = await prisma.story.update({
     where: {
       id: storyId,
       roomId,
     },
     data: {
-      status: "completed", // <-- use status instead of completed/active
+      status: "completed",
+      finalScore: finalScore,
     },
   })
 
@@ -216,6 +262,9 @@ export async function completeStory(storyId: string) {
   // Broadcast story update via Pusher
   await pusherServer.trigger(`presence-room-${roomId}`, "story-completed", {
     id: story.id,
+    finalScore: finalScore,
+    status: "completed",
+    resetCurrentStory: true
   })
 
   revalidatePath(`/room/[roomId]`)

@@ -156,13 +156,13 @@ export default function HostControls({
   const canRevealVotes = storyStatus === "active" && allPlayersVoted && !votesRevealed
 
   return (
-    <Card className="rounded-xl bg-surface/80 backdrop-blur-sm p-4 shadow-md border border-border section-card">
-      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-xl">
+    <Card className="section-card">
+      <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
         <Settings className="h-5 w-5 text-accent/80" />
         <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Host Controls</h2>
       </div>
       <div className="mb-3" />
-      <CardContent>
+      <CardContent className="space-y-6">
         <div className="space-y-2">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 pl-0.5">
             Manage Session
@@ -206,26 +206,30 @@ export default function HostControls({
               </form>
             </DialogContent>
           </Dialog>
-          <div className="border-t border-border pt-3" />
+          <div className="my-3 border-b border-border opacity-30" />
           <div className="space-y-2">
-            <button
-              className="w-full bg-muted border border-border text-foreground font-medium py-2 rounded-lg hover:bg-muted/80 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/30"
-              onClick={votesRevealed ? handleResetVotes : handleRevealVotes}
-              disabled={votesRevealed ? false : !canRevealVotes}
-              type="button"
-            >
-              {votesRevealed ? (
-                <>
-                  <RotateCcw className="h-4 w-4 mr-2 inline" />
-                  Reset Votes
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2 inline" />
-                  Reveal Votes
-                </>
-              )}
-            </button>
+            {(votesRevealed || allPlayersVoted) && (
+              <button
+                className={
+                  `w-full bg-muted border border-border text-foreground font-medium py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/30 flex items-center justify-center gap-2 ` +
+                  (votesRevealed ? 'hover:bg-muted/80' : '')
+                }
+                onClick={votesRevealed ? handleResetVotes : handleRevealVotes}
+                type="button"
+              >
+                {votesRevealed ? (
+                  <>
+                    <RotateCcw className="h-4 w-4 mr-2 inline" />
+                    Reset Votes
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2 inline" />
+                    Reveal Votes
+                  </>
+                )}
+              </button>
+            )}
             <button
               className="w-full bg-secondary/20 border border-secondary text-secondary font-medium py-2 rounded-lg hover:bg-secondary/30 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary/30"
               onClick={handleCompleteStory}
@@ -245,6 +249,7 @@ export default function HostControls({
             </button>
           </div>
         </div>
+        <div className="my-3 border-b border-border opacity-30" />
         <Dialog open={isDeckDialogOpen} onOpenChange={setIsDeckDialogOpen}>
           <DialogTrigger asChild></DialogTrigger>
           <DialogContent className="max-w-2xl">

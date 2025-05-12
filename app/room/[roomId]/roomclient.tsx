@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { usePusherContext } from "@/app/context/pusher-context"
 import RoomHeader from "@/app/components/room/room-header"
 import VotingPanel from "@/app/components/room/voting-panel"
@@ -31,8 +31,19 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   const { currentStory, setCurrentStory } = useCurrentStory()
   const [localVotes, setLocalVotes] = useState<{ playerId: string; playerName: string; value: string }[]>([])
 
-  // Log the roomId before rendering PusherProvider
-  console.log('Rendering PusherProvider with roomId:', roomData.id);
+  const handleVoteRemoved = useCallback(
+    (data: { playerId: string; storyId: string }) => {
+      console.log('[RoomClient] Received vote-removed event:', data);
+      setLocalVotes((prev) => {
+        const newVotes = prev.filter(
+          (vote) => vote.playerId !== data.playerId
+        );
+        console.log('[RoomClient] Updated localVotes:', newVotes);
+        return newVotes;
+      });
+    },
+    []
+  );
 
   // Keep localVotes in sync with initial data and handle real-time updates
   useEffect(() => {
@@ -85,6 +96,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     const bindEvents = () => {
       console.log('[ROOMCLIENT] Binding events to channel:', channel.name);
       channel.bind("vote-submitted", handleVoteSubmitted);
+      channel.bind("vote-removed", handleVoteRemoved);
       channel.bind("active-story-changed", handleActiveStoryChanged);
     };
 
@@ -112,6 +124,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     return () => {
       console.log('[ROOMCLIENT] Unbinding vote handlers');
       channel.unbind("vote-submitted", handleVoteSubmitted);
+      channel.unbind("vote-removed", handleVoteRemoved);
       channel.unbind("active-story-changed", handleActiveStoryChanged);
       channel.unbind('pusher:subscription_succeeded', handleSubscriptionSucceeded);
       channel.unbind('pusher:subscription_error', handleSubscriptionError);
@@ -178,9 +191,18 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     if (!channel) return
 
     const handleStoryCompleted = (data: any) => {
-      setLocalVotes([])
-      setCurrentStory((prev: any) => prev ? { ...prev, votesRevealed: false } : prev);
-      // Optionally update currentStory/status here if needed
+      console.log('[ROOMCLIENT] Story completed event received:', data);
+      
+      // Clear votes
+      setLocalVotes([]);
+      
+      // Force reset current story to null 
+      setCurrentStory(null);
+      
+      // Additional check to verify the story was cleared
+      setTimeout(() => {
+        console.log('[ROOMCLIENT] Current story after completion:', { currentStory });
+      }, 100);
     }
 
     channel.bind("story-completed", handleStoryCompleted)
@@ -199,57 +221,84 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     return () => channel.unbind("votes-reset", handleVotesReset);
   }, [channel, setCurrentStory]);
 
-  // 1. Filter completed stories from roomData.stories
-  const completedStories = roomData.stories.filter(
-    (story: any) => story.status === "completed" || story.completed
-  )
+  // Use completedStories from roomData which already has votes included
+  const completedStories = roomData.completedStories || []
+
+  const removeVote = async (storyId: string) => {
+    console.log('[RoomClient] removeVote called with storyId:', storyId);
+    try {
+      const response = await fetch(`/api/rooms/${roomData.id}/votes`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ storyId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove vote');
+      }
+
+      const data = await response.json();
+      console.log('[RoomClient] removeVote response:', data);
+    } catch (error) {
+      console.error('[RoomClient] Error removing vote:', error);
+      throw error;
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
+    <div className="flex flex-col min-h-screen">
       <RoomHeader roomCode={roomData.code} isHost={roomData.isHost} />
-
-      <div className="flex-1 container mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <CurrentStory story={currentStory} isHost={roomData.isHost} />
-          <Separator />
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <VotingPanel
-                deck={roomData.deck}
-                currentVote={roomData.currentUserVote}
-                isHost={roomData.isHost}
-                storyId={currentStory?.id}
-                votes={localVotes}
-                players={roomData.players}
-                roomData={roomData}
-              />
+      
+      <main className="flex-1 flex justify-center">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-surface rounded-3xl p-6 shadow-xl">
+            <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
+              {/* Left Column (2/3 width on large screens) */}
+              <section className="lg:col-span-2 space-y-6">
+                <CurrentStory story={currentStory} isHost={roomData.isHost} />
+                <Separator />
+                <VotingPanel
+                  deck={roomData.deck}
+                  currentVote={roomData.currentUserVote}
+                  isHost={roomData.isHost}
+                  storyId={currentStory?.id}
+                  votes={localVotes}
+                  players={roomData.players}
+                  roomData={roomData}
+                />
+              </section>
+              
+              {/* Right Column (1/3 width on large screens) */}
+              <aside className="space-y-6">
+                <StoriesPanel stories={roomData.stories} isHost={roomData.isHost} />
+                <PlayersPanel
+                  players={roomData.players}
+                  hostId={roomData.hostId}
+                  currentPlayerId={roomData.currentPlayerId}
+                  votesRevealed={currentStory?.votesRevealed}
+                  deck={roomData.deck}
+                />
+                {roomData.isHost && (
+                  <HostControls
+                    currentStoryId={roomData.currentStory?.id}
+                    votesRevealed={roomData.votesRevealed}
+                    hasVotes={roomData.currentVotes.length > 0}
+                    allPlayersVoted={allPlayersVoted}
+                    storyStatus={roomData.currentStory?.status}
+                    currentDeckType={roomData.deckType}
+                    currentDeck={roomData.deck}
+                  />
+                )}
+                <HistoryPanel completedStories={completedStories} />
+              </aside>
             </div>
           </div>
         </div>
-        <div className="space-y-6">
-          <StoriesPanel stories={roomData.stories} isHost={roomData.isHost} />
-          <PlayersPanel
-            players={roomData.players}
-            hostId={roomData.hostId}
-            currentPlayerId={roomData.currentPlayerId}
-            votesRevealed={currentStory?.votesRevealed} // <-- real-time state
-            deck={roomData.deck}
-          />
-          {roomData.isHost && (
-            <>
-              <HostControls
-                currentStoryId={roomData.currentStory?.id}
-                votesRevealed={roomData.votesRevealed}
-                hasVotes={roomData.currentVotes.length > 0}
-                allPlayersVoted={allPlayersVoted}
-                storyStatus={roomData.currentStory?.status}
-              />
-            </>
-          )}
-          <HistoryPanel completedStories={completedStories} />
-        </div>
-      </div>
+      </main>
     </div>
   )
 }

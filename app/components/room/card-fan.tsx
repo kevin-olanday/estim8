@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion, easeOut } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +45,24 @@ const CardFan: React.FC<CardFanProps> = ({
   gradientPresets,
   getContrastYIQ,
 }) => {
+  // --- Fly-in animation state ---
+  const [dealAnimKey, setDealAnimKey] = useState(0);
+  const [dealingIndex, setDealingIndex] = useState(-1);
+  const [dealt, setDealt] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setDealAnimKey((k) => k + 1);
+    setDealingIndex(-1);
+    setDealt(new Set());
+    if (!deck || deck.length === 0) return;
+    let cancelled = false;
+    // Start dealing the first card after a short delay
+    setTimeout(() => {
+      if (!cancelled) setDealingIndex(0);
+    }, 80);
+    return () => { cancelled = true; };
+  }, [storyId, deck]);
+
   if (!deck || deck.length === 0) return null;
   const center = Math.floor(deck.length / 2);
   const cardsWithMeta = deck.map((card, i) => {
@@ -67,22 +85,40 @@ const CardFan: React.FC<CardFanProps> = ({
           </div>
         )}
         {sorted.map(({ card, angle, xOffset, index: i }) => {
+          if (i > dealingIndex) return null;
           const isSelected = selectedCard === card.label;
           const isHovered = hovered === i || keyboardHovered === i;
+          // Only trigger onAnimationComplete for the card currently being dealt
+          const isLastDealt = i === dealingIndex && dealingIndex < deck.length - 1;
+          const isBeingDealt = i === dealingIndex && !dealt.has(i);
+          if (isBeingDealt && !dealt.has(i)) {
+            setTimeout(() => setDealt(prev => new Set(prev).add(i)), 0);
+          }
           return (
             <motion.button
-              key={card.label}
-              initial={{ opacity: 0, y: 16 }}
+              key={card.label + dealAnimKey}
+              initial={isBeingDealt ? {
+                opacity: 0,
+                x: -300,
+                y: -200,
+                scale: 0.7,
+              } : false}
               animate={{
                 opacity: 1,
+                x: 0,
                 y: (isHovered || isSelected) ? -100 : 0,
+                scale: 1,
                 zIndex: isSelected ? 30 : isHovered ? 40 : 10 + i,
               }}
-              transition={
-                isHovered
-                  ? { y: { type: "tween", duration: 0.25, ease: easeOut} }
-                  : { y: { type: "tween", duration: 0.01 } }
-              }
+              transition={{
+                x: { type: "tween", duration: 0.08, ease: easeOut },
+                y: { type: "tween", duration: 0.08, ease: easeOut },
+                opacity: { type: "tween", duration: 0.08, ease: easeOut },
+                scale: { type: "tween", duration: 0.08, ease: easeOut },
+              }}
+              onAnimationComplete={() => {
+                if (isLastDealt) setTimeout(() => setDealingIndex((idx) => idx + 1), 5);
+              }}
               style={{
                 position: 'absolute',
                 left: `calc(50% + ${xOffset}px)` ,
@@ -102,11 +138,7 @@ const CardFan: React.FC<CardFanProps> = ({
               disabled={isVoting || !storyId}
               tabIndex={0}
               onClick={() => {
-                if (isSelected) {
-                  setSelectedCard(null);
-                } else {
-                  handleVote(card.label);
-                }
+                handleVote(card.label);
               }}
               onKeyDown={(e) => handleCardKeyDown(e, i)}
               onMouseEnter={() => setHovered(i)}

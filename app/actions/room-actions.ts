@@ -3,12 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
-import { PrismaClient, Prisma } from "@prisma/client"
 import { pusherServer } from "@/lib/pusher-server"
 import { DEFAULT_DECKS, DeckType } from "@/types/card"
 import type { Deck } from "@/types/card"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 export async function createRoom(formData: FormData) {
   const roomName = formData.get("roomName") as string
@@ -57,7 +56,7 @@ export async function createRoom(formData: FormData) {
     sameSite: "lax",
   })
 
-  cookiesStore.set("playerName", player.name, {
+  cookiesStore.set("playerName", player.name ?? "", {
     httpOnly: false, // must be accessible by the browser
     sameSite: "lax",
   })
@@ -71,7 +70,7 @@ export async function joinRoom(formData: FormData) {
   const playerName = formData.get("playerName") as string
 
   if (!roomCode || !playerName) {
-    throw new Error("Room code and name are required")
+    return { error: "Room code and name are required" }
   }
 
   // Find the room
@@ -82,7 +81,7 @@ export async function joinRoom(formData: FormData) {
   })
 
   if (!room) {
-    throw new Error("Room not found")
+    return { error: "Room not found" }
   }
 
   // Create the player
@@ -106,13 +105,13 @@ export async function joinRoom(formData: FormData) {
     sameSite: "lax",
   })
 
-  cookiesStore.set("playerName", player.name, {
+  cookiesStore.set("playerName", player.name ?? "", {
     httpOnly: false, // must be accessible by the browser
     sameSite: "lax",
   })
 
   // Notify other players via Pusher
-  await pusherServer.trigger(`room-${room.id}`, "player-joined", {
+  await pusherServer.trigger(`presence-room-${room.id}`, "player-joined", {
     playerId: player.id,
     playerName: player.name,
   })

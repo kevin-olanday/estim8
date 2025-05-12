@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card as CardUI } from "@/components/ui/card"
 import { CardContent } from "@/components/ui/card"
-import { submitVote } from "@/app/actions/vote-actions"
+import { submitVote, removeVote } from "@/app/actions/vote-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { VoteStatistics } from "@/app/components/room/vote-statistics"
 import { Confetti } from "@/app/components/ui/confetti"
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 import ThemeSelectorModal from "./theme-selector-modal"
 import CardFan from "./card-fan"
 import CardGrid from "./card-grid"
+import DefaultThemeBackground from "@/app/components/room/DefaultThemeBackground"
 
 interface Vote {
   playerId: string
@@ -47,6 +48,14 @@ interface VotingPanelProps {
   storyId?: string
 }
 
+interface GradientPreset {
+  name: string;
+  value: string;
+  from: string;
+  to: string;
+  category: "bright" | "dark";
+}
+
 export default function VotingPanel({
   deck = [],
   currentVote,
@@ -65,9 +74,8 @@ export default function VotingPanel({
   const [hovered, setHovered] = useState<number | null>(null)
   const [keyboardHovered, setKeyboardHovered] = useState<number | null>(null)
   const [showThemeModal, setShowThemeModal] = useState(false)
-
-  console.log('[VotingPanel] currentUserId:', roomData?.currentUserId, 'votes:', votes, 'currentVote:', currentVote);
-  console.log('Deck:', deck);
+  const [allInCelebration, setAllInCelebration] = useState(false);
+  const prevAllIn = useRef(false);
 
   // Reset selectedCard and hide statistics when the active story changes
   useEffect(() => {
@@ -84,7 +92,6 @@ export default function VotingPanel({
     if (!channel) return
 
     const handleVotesRevealed = () => {
-      console.log('[VotingPanel] votes-revealed event received');
       setShowConfetti(true)
       setTimeout(() => setShowConfetti(false), 3000)
       // Update the context
@@ -136,20 +143,46 @@ export default function VotingPanel({
 
   const handleVote = useCallback(
     async (value: string) => {
+      console.log('[VotingPanel] handleVote called with value:', value);
+      console.log('[VotingPanel] Current state:', {
+        isVoting,
+        storyId,
+        selectedCard,
+        currentVote
+      });
+
       if (isVoting || !storyId) return
 
+      // If the card is already selected, remove the vote
+      if (selectedCard === value) {
+        console.log('[VotingPanel] Removing vote for value:', value);
+        setIsVoting(true)
+        setSelectedCard(null)
+        try {
+          await removeVote(storyId)
+          console.log('[VotingPanel] Vote removed successfully');
+        } catch (error) {
+          console.error("[VotingPanel] Failed to remove vote:", error)
+        } finally {
+          setIsVoting(false)
+        }
+        return
+      }
+
+      console.log('[VotingPanel] Submitting vote for value:', value);
       setIsVoting(true)
       setSelectedCard(value)
 
       try {
         await submitVote(storyId, value)
+        console.log('[VotingPanel] Vote submitted successfully');
       } catch (error) {
-        console.error("Failed to submit vote:", error)
+        console.error("[VotingPanel] Failed to submit vote:", error)
       } finally {
         setIsVoting(false)
       }
     },
-    [isVoting, storyId],
+    [isVoting, storyId, selectedCard],
   )
 
   useEffect(() => {
@@ -204,31 +237,35 @@ export default function VotingPanel({
   // Find the user's vote in the revealed votes
   const myVote = votes.find((v) => v.playerId === roomData?.currentUserId)?.value ?? currentVote
 
-  // Debug logging for votesRevealed and votes
-  console.log('VotingPanel:', { votesRevealed: currentStory?.votesRevealed, votes });
-
-  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
-    if (e.key === "Enter") {
-      handleVote(deck[idx].label)
-    }
-  }
-
   // Gradient theme presets
-  const gradientPresets = [
-    { name: 'Default', value: 'bg-gradient-to-br from-gray-500 to-gray-700', from: '#6b7280', to: '#374151' },
-    { name: 'Blue to Purple', value: 'bg-gradient-to-br from-blue-500 to-purple-600', from: '#3b82f6', to: '#9333ea' },
-    { name: 'Pink Sunset', value: 'bg-gradient-to-br from-pink-400 to-rose-600', from: '#f472b6', to: '#e11d48' },
-    { name: 'Citrus Pop', value: 'bg-gradient-to-br from-yellow-400 to-orange-500', from: '#facc15', to: '#f97316' },
-    { name: 'Emerald Sky', value: 'bg-gradient-to-br from-green-400 to-teal-500', from: '#4ade80', to: '#14b8a6' },
-    { name: 'Cyberpunk', value: 'bg-gradient-to-br from-fuchsia-600 to-cyan-400', from: '#c026d3', to: '#22d3ee' },
-    { name: 'Ocean Fade', value: 'bg-gradient-to-br from-indigo-400 to-sky-500', from: '#818cf8', to: '#0ea5e9' },
-    { name: 'Aurora Green', value: 'bg-gradient-to-br from-[#00ff99] to-[#0066ff]', from: '#00ff99', to: '#0066ff' },
-    { name: 'Inferno', value: 'bg-gradient-to-br from-[#ff6b6b] to-[#ffa94d]', from: '#ff6b6b', to: '#ffa94d' },
-    { name: 'Neon Noir', value: 'bg-gradient-to-br from-[#1f005c] to-[#5b247a]', from: '#1f005c', to: '#5b247a' },
-    { name: 'Cotton Candy', value: 'bg-gradient-to-br from-[#f6d365] to-[#fda085]', from: '#f6d365', to: '#fda085' },
-    { name: 'Bubblegum Bolt', value: 'bg-gradient-to-br from-[#ec38bc] to-[#7303c0]', from: '#ec38bc', to: '#7303c0' },
+  const gradientPresets: GradientPreset[] = [
+    { name: 'Minimalist Mode', value: 'bg-gradient-to-br from-gray-500 to-gray-700', from: '#6b7280', to: '#374151', category: 'dark' },
+    { name: 'Estim8 Core', value: 'bg-gradient-to-br from-blue-500 to-purple-600', from: '#3b82f6', to: '#9333ea', category: 'bright' },
+    { name: 'Pink Sunset', value: 'bg-gradient-to-br from-pink-400 to-rose-600', from: '#f472b6', to: '#e11d48', category: 'bright' },
+    { name: 'Citrus Pop', value: 'bg-gradient-to-br from-yellow-400 to-orange-500', from: '#facc15', to: '#f97316', category: 'bright' },
+    { name: 'Emerald Sky', value: 'bg-gradient-to-br from-green-400 to-teal-500', from: '#4ade80', to: '#14b8a6', category: 'bright' },
+    { name: 'Cyberpunk', value: 'bg-gradient-to-br from-fuchsia-600 to-cyan-400', from: '#c026d3', to: '#22d3ee', category: 'bright' },
+    { name: 'Ocean Fade', value: 'bg-gradient-to-br from-indigo-400 to-sky-500', from: '#818cf8', to: '#0ea5e9', category: 'bright' },
+    { name: 'Aurora Green', value: 'bg-gradient-to-br from-[#00ff99] to-[#0066ff]', from: '#00ff99', to: '#0066ff', category: 'bright' },
+    { name: 'Inferno', value: 'bg-gradient-to-br from-[#ff6b6b] to-[#ffa94d]', from: '#ff6b6b', to: '#ffa94d', category: 'bright' },
+    { name: 'Neon Noir', value: 'bg-gradient-to-br from-[#1f005c] to-[#5b247a]', from: '#1f005c', to: '#5b247a', category: 'dark' },
+    { name: 'Cotton Candy', value: 'bg-gradient-to-br from-[#f6d365] to-[#fda085]', from: '#f6d365', to: '#fda085', category: 'bright' },
+    { name: 'Bubblegum Bolt', value: 'bg-gradient-to-br from-[#ec38bc] to-[#7303c0]', from: '#ec38bc', to: '#7303c0', category: 'dark' },
+    { name: 'Midnight Ink', value: 'bg-gradient-to-br from-[#0f0f1a] to-[#1a1a2e]', from: '#0f0f1a', to: '#1a1a2e', category: 'dark' },
+    { name: 'Charcoal Burn', value: 'bg-gradient-to-br from-[#2c2c2e] to-[#444]', from: '#2c2c2e', to: '#444', category: 'dark' },
+    { name: 'Galaxy Fade', value: 'bg-gradient-to-br from-[#2d1b69] to-[#000]', from: '#2d1b69', to: '#000', category: 'dark' },
   ];
-  const [deckTheme, setDeckTheme] = useState<string>(gradientPresets[0].value);
+  const [deckTheme, setDeckTheme] = useState<string>(gradientPresets[1].value);
+
+  // Aurora background theme sync
+  useEffect(() => {
+    const preset = gradientPresets.find(g => g.value === deckTheme);
+    document.body.style.setProperty('--gradient1', preset?.from || '#1f2e56');
+    document.body.style.setProperty('--gradient2', preset?.to || '#6d44b8');
+    // Use a third color if available, else fallback to a magenta
+    const third = (preset && (preset as any).third) || '#ff49d9';
+    document.body.style.setProperty('--gradient3', third);
+  }, [deckTheme, gradientPresets]);
 
   function handleSurpriseMe() {
     const idx = Math.floor(Math.random() * gradientPresets.length);
@@ -277,86 +314,181 @@ export default function VotingPanel({
     document.head.appendChild(style);
   }
 
-  return (
-    <div className="section-card space-y-4">
-      {showConfetti && <Confetti />}
-      <div className="flex items-center justify-between py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
-        <div className="flex items-center gap-2">
-          <Hand className="h-4 w-4 text-accent/80" />
-          <h2 className="text-base font-semibold text-muted-foreground tracking-tight">Your Estimate</h2>
-        </div>
-        <div className="flex gap-2 items-center">
-          <span className="label-base">Card Theme:</span>
-          <button
-            type="button"
-            className="btn btn-utility"
-            onClick={() => setShowThemeModal(true)}
-          >
-            🎨 Customize Theme
-          </button>
-        </div>
-      </div>
-      <div className="mb-3" />
-      {/* Theme Selector Modal */}
-      <ThemeSelectorModal
-        show={showThemeModal}
-        onClose={() => setShowThemeModal(false)}
-        gradientPresets={gradientPresets}
-        deckTheme={deckTheme}
-        setDeckTheme={setDeckTheme}
-        handleSurpriseMe={() => { handleSurpriseMe(); setShowThemeModal(false); }}
-      />
-      {/* Hand of Cards Layout (desktop), grid fallback (mobile) */}
-      <CardFan
-        deck={deck}
-        selectedCard={selectedCard}
-        setSelectedCard={setSelectedCard}
-        isVoting={isVoting}
-        storyId={storyId}
-        handleVote={handleVote}
-        handleCardKeyDown={handleCardKeyDown}
-        hovered={hovered}
-        setHovered={setHovered}
-        keyboardHovered={keyboardHovered}
-        deckTheme={deckTheme}
-        gradientPresets={gradientPresets}
-        getContrastYIQ={getContrastYIQ}
-      />
-      {/* Mobile grid fallback */}
-      <CardGrid
-        deck={deck}
-        selectedCard={selectedCard}
-        setSelectedCard={setSelectedCard}
-        isVoting={isVoting}
-        storyId={storyId}
-        handleVote={handleVote}
-        handleCardKeyDown={handleCardKeyDown}
-      />
+  useEffect(() => {
+    const allIn = votes.length === players.length && players.length > 1;
+    if (allIn && !prevAllIn.current) {
+      setAllInCelebration(true);
+      setTimeout(() => setAllInCelebration(false), 1200);
+    }
+    prevAllIn.current = allIn;
+  }, [votes.length, players.length]);
 
-      {/* --- Vote Reveal Section --- */}
-      {currentStory?.votesRevealed ? (
-        <motion.div>
-          <VoteStatistics votes={votes} deck={deck} currentUserId={roomData?.currentUserId} />
-        </motion.div>
-      ) : (
-        <div className="mt-4">
-          <CardUI>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-sm">
-                  {votes.length} votes cast
-                </Badge>
-                {votes.length === players.length && (
-                  <Badge variant="outline" className="text-sm">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    All votes in
-                  </Badge>
-                )}
-              </div>
-            </CardContent>
-          </CardUI>
+  // Inject shimmer and pulse CSS if not present
+  if (typeof window !== 'undefined' && !document.getElementById('all-in-anim-style')) {
+    const style = document.createElement('style');
+    style.id = 'all-in-anim-style';
+    style.innerHTML = `
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      .shimmer {
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+        background-size: 200% 100%;
+        animation: shimmer 0.5s linear 1;
+      }
+      @keyframes pulse-ring {
+        0% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+        70% { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+        100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+      }
+      .pulse-ring {
+        position: relative;
+      }
+      .pulse-ring::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 2.5em;
+        height: 2.5em;
+        transform: translate(-50%, -50%);
+        border-radius: 9999px;
+        box-shadow: 0 0 0 0 rgba(99,102,241,0.4);
+        animation: pulse-ring 0.7s cubic-bezier(0.4,0,0.6,1) 1;
+        pointer-events: none;
+        z-index: 0;
+      }
+      @keyframes sparkle {
+        0% { opacity: 0; transform: scale(0.7) rotate(0deg); }
+        50% { opacity: 1; transform: scale(1.2) rotate(20deg); }
+        100% { opacity: 0; transform: scale(0.7) rotate(0deg); }
+      }
+      .sparkle {
+        position: absolute;
+        top: 0.2em;
+        right: 0.2em;
+        width: 1.2em;
+        height: 1.2em;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        animation: sparkle 0.7s ease-in 1;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    if (e.key === "Enter") {
+      handleVote(deck[idx].label)
+    }
+  }
+
+  return (
+    <>
+      {/* Show fog/ambient background for all dark themes */}
+      <DefaultThemeBackground active={gradientPresets.find(g => g.value === deckTheme)?.category === 'dark'} />
+      <div className="section-card space-y-4">
+        {showConfetti && <Confetti />}
+        <div className="flex items-center justify-between py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl">
+          <div className="flex items-center gap-2">
+            <Hand className="h-4 w-4 text-accent/80" />
+            <h2 className="text-base font-semibold text-muted-foreground tracking-tight">Your Estimate</h2>
+          </div>
+          <div className="flex gap-2 items-center">
+            <span className="label-base">Card Theme:</span>
+            <button
+              type="button"
+              className="btn btn-utility"
+              onClick={() => setShowThemeModal(true)}
+            >
+              🎨 Customize Theme
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+        <div className="mb-3" />
+        {/* Theme Selector Modal */}
+        <ThemeSelectorModal
+          show={showThemeModal}
+          onClose={() => setShowThemeModal(false)}
+          gradientPresets={gradientPresets}
+          deckTheme={deckTheme}
+          setDeckTheme={setDeckTheme}
+          handleSurpriseMe={() => { handleSurpriseMe(); setShowThemeModal(false); }}
+        />
+        {/* Hand of Cards Layout (desktop), grid fallback (mobile) */}
+        <CardFan
+          deck={deck}
+          selectedCard={selectedCard}
+          setSelectedCard={setSelectedCard}
+          isVoting={isVoting}
+          storyId={storyId}
+          handleVote={handleVote}
+          handleCardKeyDown={handleCardKeyDown}
+          hovered={hovered}
+          setHovered={setHovered}
+          keyboardHovered={keyboardHovered}
+          deckTheme={deckTheme}
+          gradientPresets={gradientPresets}
+          getContrastYIQ={getContrastYIQ}
+        />
+        {/* Mobile grid fallback */}
+        <CardGrid
+          deck={deck}
+          selectedCard={selectedCard}
+          setSelectedCard={setSelectedCard}
+          isVoting={isVoting}
+          storyId={storyId}
+          handleVote={handleVote}
+          handleCardKeyDown={handleCardKeyDown}
+        />
+
+        {/* --- Vote Reveal Section --- */}
+        {currentStory?.votesRevealed ? (
+          <motion.div>
+            <VoteStatistics votes={votes} deck={deck} currentUserId={roomData?.currentUserId} />
+          </motion.div>
+        ) : (
+          players.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex justify-center mt-8"
+            >
+              <div
+                className={
+                  votes.length === players.length
+                    ? `relative flex items-center gap-2 px-6 py-2 rounded-full border border-accent/40 bg-accent/10 shadow-inner text-accent font-semibold text-base overflow-hidden ${allInCelebration ? 'shimmer' : ''}`
+                    : "flex items-center gap-2 px-5 py-2 rounded-lg border border-border bg-muted/60 shadow-sm text-muted-foreground font-semibold text-base"
+                }
+                style={{ boxShadow: votes.length === players.length && allInCelebration ? '0 2px 16px 0 rgba(99,102,241,0.10) inset' : undefined }}
+              >
+                {votes.length === players.length ? (
+                  <span className={allInCelebration ? 'pulse-ring relative' : ''} style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+                    <CheckCircle className="w-6 h-6 mr-1 z-10" />
+                    {allInCelebration && (
+                      <span className="sparkle">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                          <path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07-7.07l-1.42 1.42M6.34 17.66l-1.42 1.42M17.66 17.66l-1.42-1.42M6.34 6.34L4.92 4.92" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-6 h-6 mr-2 text-accent" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  </>
+                )}
+                {votes.length === players.length
+                  ? "All votes in"
+                  : <span className="text-base font-semibold">{`${votes.length} of ${players.length} votes cast`}</span>}
+              </div>
+            </motion.div>
+          )
+        )}
+      </div>
+    </>
   )
 }

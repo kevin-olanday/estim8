@@ -3,9 +3,9 @@
 /* 🎨 DARK THEME ROOT COLORS */
 :root {
   /* 🔳 CORE BACKGROUND & SURFACE */
-  --color-background: #0B0E11;           /* ultra-dark, luxurious */
-  --color-surface: #141820;              /* smoked obsidian */
-  --color-muted: #1C212C;                /* soft shadow panels */
+  --color-background: #202040;           /* rich dark blue */
+  --color-surface: #1c1c2e;              /* dark navy */
+  --color-muted: #2a1f3d;                /* deep purple */
 
   /* ✍️ TEXT & FOREGROUND */
   --color-foreground: #F1F5F9;           /* clean, legible */
@@ -28,7 +28,7 @@
   --color-warning: #FACC15;
 
   /* 🎲 BORDERS */
-  --color-border: #2A2F3D;
+  --color-border: #31314f;
 }
 
 @layer utilities {

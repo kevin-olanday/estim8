@@ -1,3 +1,6 @@
+"use client"
+
+import React, { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,105 +9,205 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createRoom, joinRoom } from "@/app/actions/room-actions"
 import { DeckType } from "@/types/card"
 import Link from "next/link"
+import { motion } from "framer-motion"
+import { Loader2, User, Hash, Crown } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/app/components/ui/loading-spinner"
+import { useFormState } from "react-dom"
 
 export default function Home() {
+  const { toast } = useToast()
+  const [tab, setTab] = useState("join")
+  const [loading, setLoading] = useState(false)
+  const [joinLoading, setJoinLoading] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const joinRoomReducer = async (_state: any, formData: FormData) => joinRoom(formData);
+  const [joinState, joinFormAction] = useFormState(joinRoomReducer, null);
+
+  // Autofocus name input on tab change or mount
+  React.useEffect(() => {
+    if (tab === "create" && nameInputRef.current) {
+      nameInputRef.current.focus()
+    }
+  }, [tab])
+
+  async function handleCreateRoom(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true)
+    const formData = new FormData(e.currentTarget);
+    try {
+      const result: any = await createRoom(formData)
+      if (result?.error) {
+        toast({ title: "Error", description: result.error, variant: "destructive" })
+      } else {
+        toast({ title: "Room created!", description: "Your Planning Poker room is ready." })
+        // Optionally redirect or clear form
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to create room.", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-background/80 p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-primary">EstiM8</h1>
-          <p className="text-muted-foreground">Real-time Planning Poker for agile teams</p>
+    <div className="min-h-screen w-full flex flex-col bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-700">
+      <main className="flex-1 flex flex-col md:flex-row items-stretch justify-center max-w-5xl mx-auto px-4 py-8 gap-8">
+        {/* Left column */}
+        <section className="flex-1 flex flex-col justify-center items-center md:items-center text-center gap-6 md:gap-8 py-8 md:py-0 max-w-md mx-auto">
+          <div className="w-full flex flex-col items-center">
+            <img src="/images/placeholder-logo.png" alt="EstiM8 logo" className="h-16 md:h-20 mb-2 mx-auto filter invert" />
+            <p className="text-xl md:text-2xl text-indigo-200 font-medium mb-4">Plan smarter, together.</p>
+            <div className="flex flex-col md:flex-row items-center justify-center w-full gap-6 md:gap-8 mt-4">
+              {/* Illustration with glow/gradient burst */}
+              <div className="relative flex-shrink-0">
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-56 h-32 md:w-60 md:h-36 bg-gradient-to-br from-indigo-400/30 via-purple-400/20 to-pink-400/10 rounded-full blur-2xl z-0" />
+                <img src="/images/estim8-hero-visual.png" alt="Planning Poker illustration" className="relative z-10 mx-auto w-44 md:w-52 rounded-xl shadow-lg transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl" />
+              </div>
+              {/* Feature list to the right of the illustration */}
+              <ul className="flex flex-col gap-4 md:gap-5 items-start justify-center md:min-w-[260px]">
+                <li className="flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/20 text-green-400">
+                    <svg xmlns='http://www.w3.org/2000/svg' className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
+                  </span>
+                  <span className="text-base md:text-lg text-indigo-100">Real-time planning poker</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/20 text-green-400">
+                    <svg xmlns='http://www.w3.org/2000/svg' className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
+                  </span>
+                  <span className="text-base md:text-lg text-indigo-100">Customizable cards</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/20 text-green-400">
+                    <svg xmlns='http://www.w3.org/2000/svg' className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
+                  </span>
+                  <span className="text-base md:text-lg text-indigo-100">Live feedback</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/20 text-green-400">
+                    <svg xmlns='http://www.w3.org/2000/svg' className='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
+                  </span>
+                  <span className="text-base md:text-lg text-indigo-100">Absolutely 100% Free</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        {/* Vertical divider for desktop */}
+        <div className="hidden md:flex items-center">
+          <div className="h-5/6 w-[2px] bg-white/10 backdrop-blur-md rounded-full shadow-lg mx-4" />
         </div>
-
-        <Tabs defaultValue="join" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="join">Join Room</TabsTrigger>
-            <TabsTrigger value="create">Create Room</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="join">
-            <Card>
-              <CardHeader>
-                <CardTitle>Join an existing room</CardTitle>
-                <CardDescription>Enter a room code to join an existing session</CardDescription>
-              </CardHeader>
-              <form action={joinRoom}>
-                <CardContent>
-                  <div className="grid w-full items-center gap-4">
-                    <div className="flex flex-col space-y-1.5">
-                      <Input
-                        name="roomCode"
-                        placeholder="Room code (e.g. ABCD123)"
-                        className="text-center text-xl tracking-wider"
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1.5">
-                      <Input name="playerName" placeholder="Your name" />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full">
-                    Join Room
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="create">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create a new room</CardTitle>
-                <CardDescription>Start a new Planning Poker session</CardDescription>
-              </CardHeader>
-              <form action={createRoom}>
-                <CardContent>
-                  <div className="grid w-full items-center gap-4">
-                    <div className="flex flex-col space-y-1.5">
-                      <Input name="roomName" placeholder="Room name (optional)" />
-                    </div>
-                    <div className="flex flex-col space-y-1.5">
-                      <Input name="hostName" placeholder="Your name (as host)" required />
-                    </div>
-                    <div className="flex flex-col space-y-1.5">
-                      <label className="text-sm font-medium">Deck Type</label>
-                      <Select name="deckType" defaultValue={DeckType.FIBONACCI}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select deck type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={DeckType.FIBONACCI}>Fibonacci</SelectItem>
-                          <SelectItem value={DeckType.MODIFIED_FIBONACCI}>Modified Fibonacci</SelectItem>
-                          <SelectItem value={DeckType.TSHIRT}>T-Shirt Sizes</SelectItem>
-                          <SelectItem value={DeckType.POWERS_OF_TWO}>Powers of Two</SelectItem>
-                          <SelectItem value={DeckType.SEQUENTIAL}>Sequential</SelectItem>
-                          <SelectItem value={DeckType.RISK}>Risk Assessment</SelectItem>
-                          <SelectItem value={DeckType.CUSTOM}>Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full">
-                    Create Room
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <div className="text-center text-sm text-muted-foreground">
-          <p>
-            No registration required.{" "}
-            <Link href="/about" className="underline underline-offset-4 hover:text-primary">
-              Learn more
-            </Link>
-          </p>
-        </div>
-      </div>
+        {/* Right column */}
+        <section className="flex-1 flex flex-col justify-center items-center">
+          <motion.div
+            initial={{ scale: 0.96, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="w-[400px] md:w-[420px] max-w-full min-h-[500px] flex flex-col justify-start rounded-2xl shadow-2xl shadow-indigo-900/40 bg-white/10 border border-white/10 backdrop-blur-md p-8 space-y-8"
+          >
+            <Tabs defaultValue={tab} value={tab} onValueChange={setTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="join" className={tab === "join" ? "border-b-2 border-indigo-500 text-indigo-300 transition-all" : "transition-all"}>Join Room</TabsTrigger>
+                <TabsTrigger value="create" className={tab === "create" ? "border-b-2 border-indigo-500 text-indigo-300 transition-all" : "transition-all"}>Create Room</TabsTrigger>
+              </TabsList>
+              <TabsContent value="join">
+                <Card className="bg-transparent shadow-none border-0 w-full">
+                  <CardHeader>
+                    <CardTitle className="text-white">Join an existing room</CardTitle>
+                    <CardDescription className="text-slate-400">Enter a room code to join an existing session</CardDescription>
+                  </CardHeader>
+                  <form action={joinFormAction}>
+                    <CardContent>
+                      <div className="grid w-full items-center gap-4">
+                        <div className="flex flex-col space-y-1">
+                          <div className="relative flex items-center">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
+                              <Hash size={18} />
+                            </span>
+                            <Input
+                              name="roomCode"
+                              placeholder="Room code (e.g. ABCD123)"
+                              className="pl-10 text-xl tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                          </div>
+                          {/* Server action error display */}
+                          {typeof joinState?.error === 'string' && (
+                            <span className="text-xs text-red-500 mt-1 ml-2 text-left">{joinState.error}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col space-y-1.5 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
+                          <Input name="playerName" placeholder="Your name" className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button type="submit" className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:brightness-110 active:scale-95 transition-all duration-200 text-white text-base py-2">
+                        Join Room
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </TabsContent>
+              <TabsContent value="create">
+                <Card className="bg-transparent shadow-none border-0 w-full">
+                  <CardHeader>
+                    <CardTitle className="text-white">Create a new room</CardTitle>
+                    <CardDescription className="text-slate-400">Start a new Planning Poker session</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleCreateRoom}>
+                    <CardContent>
+                      <div className="grid w-full items-center gap-4">
+                        <div className="flex flex-col space-y-1.5 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><Crown size={18} /></span>
+                          <Input name="roomName" placeholder="Room name (optional)" className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                        </div>
+                        <div className="flex flex-col space-y-1.5 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
+                          <Input ref={nameInputRef} name="hostName" placeholder="Your name (as host)" required className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                        </div>
+                        <div className="flex flex-col space-y-1.5">
+                          <label className="text-sm font-medium text-white">Deck Type</label>
+                          <Select name="deckType" defaultValue={DeckType.FIBONACCI}>
+                            <SelectTrigger className="focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                              <SelectValue placeholder="Select deck type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={DeckType.FIBONACCI}>Fibonacci</SelectItem>
+                              <SelectItem value={DeckType.MODIFIED_FIBONACCI}>Modified Fibonacci</SelectItem>
+                              <SelectItem value={DeckType.TSHIRT}>T-Shirt Sizes</SelectItem>
+                              <SelectItem value={DeckType.POWERS_OF_TWO}>Powers of Two</SelectItem>
+                              <SelectItem value={DeckType.SEQUENTIAL}>Sequential</SelectItem>
+                              <SelectItem value={DeckType.RISK}>Risk Assessment</SelectItem>
+                              <SelectItem value={DeckType.CUSTOM}>Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:brightness-110 active:scale-95 transition-all duration-200 text-white text-base py-2">
+                        {loading ? <LoadingSpinner size={20} className="mr-2" /> : null}
+                        Create Room
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        </section>
+      </main>
+      {/* Footer always at the bottom */}
+      <footer className="w-full text-center text-sm text-slate-400 py-4 mt-auto">
+        <p>
+          No registration required.{' '}
+          <Link href="/about" className="underline underline-offset-4 hover:text-primary">
+            Learn more
+          </Link>
+        </p>
+      </footer>
     </div>
   )
 }

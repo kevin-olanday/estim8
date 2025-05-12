@@ -9,6 +9,7 @@ import { Edit, Save, FileText } from "lucide-react"
 import { updateStory } from "@/app/actions/story-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
+import { cn } from "@/lib/utils"
 
 interface CurrentStoryProps {
   story: any 
@@ -20,8 +21,9 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
   const [title, setTitle] = useState(story?.title || "")
   const [description, setDescription] = useState(story?.description || "")
   const [isSaving, setIsSaving] = useState(false)
-
+  const { currentStory, setCurrentStory } = useCurrentStory()
   const { channel } = usePusherContext()
+  const [highlight, setHighlight] = useState(false)
 
   useEffect(() => {
     if (!channel) return
@@ -32,28 +34,91 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
         setDescription(data.description || "")
       }
     }
+    
+    const handleStoryCompleted = (data: any) => {
+      console.log('[CurrentStory] Story completed event received:', data);
+      if (story && story.id === data.id) {
+        setCurrentStory(null);
+      }
+    }
 
     channel.bind("story-updated", handleStoryUpdated)
+    channel.bind("story-completed", handleStoryCompleted)
 
     return () => {
       channel.unbind("story-updated", handleStoryUpdated)
+      channel.unbind("story-completed", handleStoryCompleted)
     }
-  }, [channel, story])
+  }, [channel, story, setCurrentStory])
 
   // Update local state when story changes
   useEffect(() => {
+    console.log('[CurrentStory] Story prop changed:', story);
     if (story) {
       setTitle(story.title)
       setDescription(story.description || "")
     }
   }, [story])
 
+  // Add styles for animated gradient border
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.innerHTML = `
+      @keyframes border-flow {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+      
+      .animated-border {
+        position: relative;
+      }
+      
+      .animated-border > span {
+        background: linear-gradient(-45deg, var(--color-accent), var(--color-secondary), #6d44b8, #ff49d9);
+        background-size: 300% 300%;
+        animation: border-flow 8s ease infinite;
+        mask: 
+          linear-gradient(#fff 0 0) content-box, 
+          linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        padding: 2px;
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (story?.id) {
+      setHighlight(true)
+      const timeout = setTimeout(() => setHighlight(false), 700)
+      return () => clearTimeout(timeout)
+    }
+  }, [story?.id])
+
   if (!story) {
     return (
-      <Card className="section-card border-dashed">
-        <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">
-            {isHost ? "Add a story to start estimation" : "Waiting for the host to add a story"}
+      <Card className="section-card min-h-[140px] flex flex-col">
+        <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-accent/80" />
+            <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Current Story</h2>
+          </div>
+        </div>
+        <CardContent className="flex-1 flex items-center justify-center p-6 text-center">
+          <p className="text-muted-foreground w-full">
+            Select a story to start estimation
           </p>
         </CardContent>
       </Card>
@@ -75,7 +140,13 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
   }
 
   return (
-    <Card className="section-card">
+    <Card className={cn(
+      "section-card min-h-[140px] relative flex flex-col",
+      story && "animated-border",
+      highlight && "animate-[pulse_0.7s] ring-2 ring-indigo-400/60"
+    )}>
+      {/* Gradient border overlay for animation */}
+      <span className="absolute inset-0 rounded-2xl overflow-hidden border border-transparent pointer-events-none" />
       <div className="flex items-center gap-2 py-3 px-4 border-b border-border bg-muted/40 rounded-t-2xl justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-accent/80" />

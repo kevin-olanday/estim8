@@ -35,11 +35,7 @@ const CardGrid: React.FC<CardGridProps> = ({
           selected={selectedCard === card.label}
           disabled={isVoting || !storyId}
           onClick={() => {
-            if (selectedCard === card.label) {
-              setSelectedCard(null);
-            } else {
-              handleVote(card.label);
-            }
+            handleVote(card.label);
           }}
           tabIndex={0}
           onKeyDown={(e) => handleCardKeyDown(e, idx)}

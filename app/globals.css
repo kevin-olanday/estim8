@@ -72,5 +72,26 @@
   }
   body {
     @apply bg-background text-foreground;
+    position: relative;
   }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, var(--gradient1, #1f2e56), var(--gradient2, #6d44b8), var(--gradient3, #ff49d9));
+  background-size: 300% 300%;
+  animation: gradientShift 60s ease-in-out infinite;
+  opacity: 0.5;
+  transition: opacity 0.5s;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%, center; }
+  50% { background-position: 100% 50%, center; }
+  100% { background-position: 0% 50%, center; }
 }

@@ -38,9 +38,7 @@ export function HistoryPanel({ completedStories }: HistoryPanelProps) {
               <div key={story.id} className="card-base opacity-80 p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-medium">{story.title}</h3>
-                  {story.finalScore !== null && (
-                    <span className="btn-utility text-xs px-2 py-0.5 ml-2">Final Score: {story.finalScore}</span>
-                  )}
+                  <span className="btn-utility text-xs px-2 py-0.5 ml-2">Final Score: {story.finalScore ?? '—'}</span>
                 </div>
                 {story.description && (
                   <p className="text-sm text-muted-foreground mb-2">{story.description}</p>
@@ -48,13 +46,14 @@ export function HistoryPanel({ completedStories }: HistoryPanelProps) {
                 <div>
                   <p className="text-sm font-medium mb-1">Votes:</p>
                   <div className="flex flex-wrap gap-2">
-                    {(story.votes ?? []).map((vote) => (
-                      <span key={vote.playerId} className="btn-utility text-xs px-2 py-0.5">{vote.playerName}: {vote.value}</span>
-                    ))}
+                    {(story.votes ?? []).length > 0 ? (
+                      story.votes.map((vote) => (
+                        <span key={vote.playerId} className="btn-utility text-xs px-2 py-0.5">{vote.playerName}: {vote.value}</span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No votes recorded</span>
+                    )}
                   </div>
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  Created: {new Date(story.createdAt).toLocaleString()}
                 </div>
               </div>
             ))}
@@ -63,4 +62,4 @@ export function HistoryPanel({ completedStories }: HistoryPanelProps) {
       </CardContent>
     </Card>
   )
-}
+} 

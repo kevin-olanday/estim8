@@ -2,11 +2,9 @@
 
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
-import { PrismaClient } from "@prisma/client"
 import { pusherServer } from "@/lib/pusher-server"
 import { revealVotes } from "./story-actions"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
 
 export async function submitVote(storyId: string, value: string) {
   const cookiesStore = await cookies()
@@ -117,4 +115,31 @@ export async function submitVote(storyId: string, value: string) {
   revalidatePath(`/room/[roomId]`)
 
   return { success: true }
+}
+
+export async function removeVote(storyId: string) {
+  const cookiesStore = await cookies();
+  const roomId = cookiesStore.get("roomId")?.value;
+  const playerId = cookiesStore.get("playerId")?.value;
+
+  if (!roomId || !playerId) {
+    throw new Error("Not authenticated");
+  }
+
+  // Delete the vote
+  await prisma.vote.deleteMany({
+    where: {
+      playerId,
+      storyId,
+    },
+  });
+
+  // Broadcast vote removal via Pusher
+  await pusherServer.trigger(`presence-room-${roomId}`, "vote-removed", {
+    playerId,
+    storyId,
+  });
+
+  revalidatePath(`/room/[roomId]`);
+  return { success: true };
 }

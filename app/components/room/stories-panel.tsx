@@ -15,6 +15,7 @@ import { usePusherContext } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/hooks/use-toast"
 
 interface Story {
   id: string
@@ -38,6 +39,8 @@ export default function StoriesPanel({ stories, isHost }: StoriesPanelProps) {
   const [localStories, setLocalStories] = useState(stories)
   const { channel } = usePusherContext()
   const { setCurrentStory } = useCurrentStory()
+  const { toast } = useToast()
+  const [highlightCurrent, setHighlightCurrent] = useState(false)
 
   useEffect(() => {
     setLocalStories(stories)
@@ -68,11 +71,7 @@ export default function StoriesPanel({ stories, isHost }: StoriesPanelProps) {
             : story
         )
       )
-      setCurrentStory((prev: { id: string; status: string } | null) =>
-        prev && prev.id === data.id
-          ? { ...prev, status: "completed" }
-          : prev
-      )
+      setCurrentStory(null)
     }
 
     channel.bind("story-added", handleStoryAdded)
@@ -102,11 +101,17 @@ export default function StoriesPanel({ stories, isHost }: StoriesPanelProps) {
         status: data.status,
         votesRevealed: false,
       })
+      toast({
+        title: "New story selected",
+        description: data.title || "A new story is now active.",
+      })
+      setHighlightCurrent(true)
+      setTimeout(() => setHighlightCurrent(false), 700)
     }
 
     channel.bind("active-story-changed", handleActiveStoryChanged)
     return () => channel.unbind("active-story-changed", handleActiveStoryChanged)
-  }, [channel, setCurrentStory])
+  }, [channel, setCurrentStory, toast])
 
   useEffect(() => {
     if (!channel) return
@@ -168,7 +173,10 @@ export default function StoriesPanel({ stories, isHost }: StoriesPanelProps) {
               <PlayCircle className="h-5 w-5 text-green-500" />
               <h3 className="text-base font-semibold text-muted-foreground">Current Story</h3>
             </div>
-            <div className="section-card p-4 border border-accent/60 bg-muted/60 shadow-sm transition-all min-w-0">
+            <div className={cn(
+              "section-card p-4 border border-accent/60 bg-muted/60 shadow-sm transition-all min-w-0",
+              highlightCurrent && "animate-[pulse_0.7s] ring-2 ring-indigo-400/60"
+            )}>
               {activeStory ? (
                 <div className="flex flex-col gap-1 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
@@ -200,7 +208,7 @@ export default function StoriesPanel({ stories, isHost }: StoriesPanelProps) {
                 <Clock className="h-5 w-5 text-blue-400" />
                 <h3 className="text-base font-semibold text-muted-foreground">Upcoming Stories <span className="text-xs font-normal">({pendingStories.length})</span></h3>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 max-h-[calc(3*2.5rem)] overflow-y-auto pr-1 scrollbar-thin">
                 {pendingStories.map((story) => (
                   <div
                     key={story.id}

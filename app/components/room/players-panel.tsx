@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { LogOut, Loader, CheckCircle, Circle, Crown, Users } from "lucide-react"
+import { LogOut, Loader, CheckCircle, Circle, Crown, Users, User } from "lucide-react"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useNotification } from "@/app/context/notification-context"
 import { kickPlayer } from "@/app/actions/room-actions"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import type { Deck } from "@/types/card"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 
 interface Player {
   id: string
@@ -299,8 +300,8 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
         <h2 className="text-lg font-bold text-muted-foreground tracking-tight">Players <span className="text-xs font-normal text-muted-foreground/70">({localPlayers.length})</span></h2>
       </div>
       <div className="mb-3" />
-      <CardContent>
-        <div className="space-y-2">
+      <CardContent className="space-y-6">
+        <div className="space-y-1">
           {sortedPlayers.map((player) => {
             const isCurrent = player.id === currentPlayerId
             const isHost = player.isHost
@@ -323,42 +324,40 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             return (
               <div
                 key={player.id}
-                className={`card-base flex items-center justify-between px-3 py-2 transition
-                  ${isCurrent ? "border-2 border-accent shadow" : ""}
-                  ${!isOnline ? "opacity-50" : ""}
-                  hover:bg-accent/10 space-x-2`}
+                className={`section-card px-2 py-1 rounded-xl border border-border bg-muted/60 flex items-center gap-3 min-w-0 group transition ${isCurrent ? "border-2 border-accent shadow" : ""} ${!isOnline ? "opacity-50" : ""} hover:bg-accent/10`}
                 tabIndex={0}
                 aria-label={`${player.name}${isHost ? " (Host)" : ""}${isCurrent ? " (You)" : ""}${!isOnline ? " (Offline)" : ""}`}
               >
-                {/* Left: Avatar, Name, Badges */}
-                <div className="flex items-center gap-3 min-w-0">
+                {/* Left: Avatar, Name, Badges, Kick */}
+                <div className="flex-1 min-w-0 flex items-center gap-3">
                   <Avatar className="w-9 h-9 shrink-0">
                     <AvatarFallback>{player.emoji || getInitials(player.name)}</AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-medium text-base truncate">{player.name}</span>
-                      {isCurrent && (
-                        <span className="btn-utility text-xs px-2 py-0.5">You</span>
-                      )}
-                      {isHost && <span title="Host" className="btn-utility text-xs px-2 py-0.5 flex items-center"><Crown className="h-4 w-4 text-accent mr-1" />Host</span>}
-                    </div>
+                  <div className="flex-1 min-w-0 flex items-center gap-2 h-9">
+                    <span className="text-sm font-semibold truncate">{player.name}</span>
+                    {isCurrent && (
+                      <span className="ml-1 px-1.5 py-0 rounded-full bg-accent/20 text-accent text-[10px] font-semibold normal-case flex-shrink-0">You</span>
+                    )}
+                    {isHost && (
+                      <span className="ml-1 px-1.5 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
+                    )}
                   </div>
-                </div>
-                {/* Right: Status & Kick */}
-                <div className="flex items-center gap-2 min-w-[70px] justify-end">
+                  {/* Kick button (if present) */}
                   {hostId === currentPlayerId && player.id !== currentPlayerId && (
                     <button
-                      className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm"
+                      className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm flex-shrink-0 flex items-center justify-center"
                       title="Kick player"
                       onClick={() => handleKick(player.id, player.name)}
                     >
                       <LogOut className="w-4 h-4" />
                     </button>
                   )}
+                </div>
+                {/* Right: Status Icon */}
+                <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
                   {votesRevealed ? (
                     player.vote ? (
-                      <span className="btn-utility ml-2 text-xs px-2 py-0.5" title={`Voted: ${player.vote}`}>{player.vote}</span>
+                      <span className="btn-utility text-xs px-2 py-0.5 flex items-center" title={`Voted: ${player.vote}`}>{player.vote}</span>
                     ) : (
                       <StatusIcon status="thinking" title="No vote" />
                     )
