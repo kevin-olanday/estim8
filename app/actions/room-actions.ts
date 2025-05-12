@@ -406,6 +406,41 @@ export async function kickPlayer(playerId: string) {
   return { success: true }
 }
 
+export async function updateRoomName(newName: string) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const playerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !playerId) {
+    throw new Error("Not authenticated")
+  }
+
+  // Check if player is host
+  const player = await prisma.player.findUnique({
+    where: {
+      id: playerId,
+      roomId,
+    },
+  })
+
+  if (!player?.isHost) {
+    throw new Error("Only the host can update the room name")
+  }
+
+  // Update the room name
+  const updatedRoom = await prisma.room.update({
+    where: { id: roomId },
+    data: { name: newName },
+  })
+
+  // Broadcast the name update via Pusher
+  await pusherServer.trigger(`presence-room-${roomId}`, "room-name-updated", { name: newName })
+
+  revalidatePath(`/room/[roomId]`)
+
+  return { success: true, name: updatedRoom.name }
+}
+
 // Helper functions
 function generateRoomCode() {
   const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

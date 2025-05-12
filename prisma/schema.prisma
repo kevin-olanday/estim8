@@ -26,6 +26,7 @@ enum StoryStatus {
 model Room {
   id            String     @id @default(cuid())
   code          String     @unique
+    name          String?
   deckType      DeckType   @default(CUSTOM)
   deck          Json       
   createdAt     DateTime   @default(now())

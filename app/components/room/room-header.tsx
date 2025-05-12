@@ -2,12 +2,14 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Copy, Share2, Moon, Sun } from "lucide-react"
+import { Copy, Share2, Moon, Sun, Pencil, X, Check } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
 import { KeyboardShortcuts } from "@/app/components/room/keyboard-shortcuts"
 import { useRouter } from "next/navigation"
+import { updateRoomName as updateRoomNameAction } from "@/app/actions/room-actions"
+import { usePusherContext } from "@/app/context/pusher-context"
 
 interface RoomHeaderProps {
   roomCode: string
@@ -23,6 +25,12 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
   const logoRef = useRef<HTMLSpanElement>(null)
   const router = useRouter()
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(roomName || "")
+  const [saving, setSaving] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [currentRoomName, setCurrentRoomName] = useState(roomName || "")
+  const { pusher, channel } = usePusherContext?.() || {}
 
   useEffect(() => {
     if (logoRef.current) {
@@ -54,6 +62,24 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
       document.head.removeChild(style);
     };
   }, []);
+
+  useEffect(() => {
+    setEditValue(roomName || "")
+    setCurrentRoomName(roomName || "")
+  }, [roomName])
+
+  // Listen for real-time room name updates
+  useEffect(() => {
+    if (!channel) return
+    const handler = (data: { name: string }) => {
+      setCurrentRoomName(data.name)
+      setEditValue(data.name)
+    }
+    channel.bind("room-name-updated", handler)
+    return () => {
+      channel.unbind("room-name-updated", handler)
+    }
+  }, [channel])
 
   const copyRoomCode = async () => {
     const success = await copyToClipboard(roomCode)
@@ -105,8 +131,6 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
     }
   };
 
-  const toggleTheme = () => setDarkMode((d) => !d)
-
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     setShowLeaveDialog(true);
@@ -117,6 +141,21 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
     router.push("/");
   };
 
+  // Dummy updateRoomName function (replace with real API call)
+  async function updateRoomName(newName: string) {
+    setSaving(true)
+    try {
+      setCurrentRoomName(newName) // Optimistic UI
+      await updateRoomNameAction(newName)
+      setEditing(false)
+    } catch (e) {
+      // Optionally show error
+      setCurrentRoomName(roomName || "")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       {/* Neon/gradient bar for distinction */}
@@ -125,9 +164,9 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
         className="w-full shadow-xl border-b border-border bg-background px-6 py-4 transition-all"
         style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
       >
-        <div className="mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-          {/* Left: Logo, App Name, Slogan */}
-          <div className="flex flex-row items-center min-w-0 w-full sm:w-auto">
+        <div className="mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 w-full">
+          {/* Left: Logo and Slogan stacked */}
+          <div className="flex flex-col items-start min-w-0 w-full sm:w-auto">
             <div className="flex flex-row items-center gap-3 min-w-0">
               <img
                 src="/images/placeholder-logo.png"
@@ -138,16 +177,77 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogoClick(e as any); }}
                 aria-label="Go to home screen"
               />
-              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight hidden sm:inline-block">
+              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight ml-2">
                 | Real-Time Planning Poker for Agile Teams
               </span>
             </div>
-            {roomName && (
-              <span className="ml-3 text-lg font-semibold text-foreground truncate max-w-xs block sm:inline" title={roomName}>
-                {roomName}
-              </span>
-            )}
           </div>
+          {/* Center: Room Name */}
+          {currentRoomName && (
+            <div className="flex-1 flex justify-center items-center mt-2 sm:mt-0">
+              <div
+                className="relative group flex items-center"
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+              >
+                {editing ? (
+                  <form
+                    className="flex items-center gap-2"
+                    onSubmit={async e => {
+                      e.preventDefault()
+                      if (!editValue.trim()) return
+                      await updateRoomName(editValue.trim())
+                    }}
+                  >
+                    <input
+                      className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-accent"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      disabled={saving}
+                      style={{ minWidth: 120, maxWidth: 240 }}
+                      autoFocus
+                    />
+                    <button type="submit" className="text-accent" disabled={saving} title="Save">
+                      <Check className="w-5 h-5" />
+                    </button>
+                    <button type="button" className="text-muted-foreground" onClick={() => { setEditing(false); setEditValue(currentRoomName) }} title="Cancel" disabled={saving}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex flex-row items-center group/badge" style={{gap: 6}}>
+                    <span
+                      className="px-4 py-1 rounded-xl text-2xl font-extrabold tracking-tight text-accent shadow-sm bg-accent/10 border border-accent/30 transition-colors"
+                      style={{
+                        textShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                        letterSpacing: '0.01em',
+                        maxWidth: '90vw',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
+                        cursor: isHost ? 'pointer' : 'default',
+                      }}
+                      title={currentRoomName}
+                    >
+                      {currentRoomName}
+                    </span>
+                    {/* Edit icon: only for host, only when not editing */}
+                    {isHost && !editing && (
+                      <button
+                        type="button"
+                        className="ml-1 opacity-0 group-hover/badge:opacity-100 transition-opacity p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                        style={{ background: 'transparent', lineHeight: 0 }}
+                        onClick={() => setEditing(true)}
+                        title="Edit room name"
+                      >
+                        <Pencil className="w-4 h-4 text-accent group-hover/badge:bg-accent/10 rounded-full p-0.5 transition-colors" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {/* Right: Controls */}
           <div className="flex items-center gap-1 flex-shrink-0 mt-4 sm:mt-0 self-center sm:self-auto">
             {roomCode && (
@@ -202,9 +302,6 @@ export default function RoomHeader({ roomCode, roomName, isHost }: RoomHeaderPro
                 </div>
               )}
             </div>
-            <button className="btn-utility ml-1" style={{padding: '0.375rem 0.5rem'}} onClick={toggleTheme} title="Toggle theme">
-              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
             <KeyboardShortcuts isHost={isHost} />
           </div>
         </div>

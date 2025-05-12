@@ -12,6 +12,7 @@ import type { Deck } from "@/types/card"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { kickPlayer } from "@/app/actions/room-actions"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { PlayerAvatar } from "./player-avatar"
 
 interface Player {
   id: string
@@ -363,17 +364,12 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
               >
                 {/* Left: Avatar, Name, Badges, Kick */}
                 <div className="flex-1 min-w-0 flex items-center gap-3">
-                  <Avatar className="w-9 h-9 shrink-0">
-                    {player.avatarStyle && player.avatarSeed ? (
-                      <img
-                        src={`https://api.dicebear.com/7.x/${player.avatarStyle}/svg?seed=${encodeURIComponent(player.avatarSeed)}`}
-                        alt={player.name + "'s avatar"}
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    ) : (
-                      <AvatarFallback>{player.emoji || getInitials(player.name)}</AvatarFallback>
-                    )}
-                  </Avatar>
+                  <PlayerAvatar
+                    name={player.name}
+                    avatarStyle={player.avatarStyle || undefined}
+                    avatarSeed={player.avatarSeed || undefined}
+                    size="md"
+                  />
                   <div className="flex-1 min-w-0 flex items-center gap-2 h-9">
                     <span className="text-sm font-semibold truncate">{player.name}</span>
                     {isCurrent && (

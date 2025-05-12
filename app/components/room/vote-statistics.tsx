@@ -7,6 +7,7 @@ import type { Deck } from "@/types/card"
 import { motion } from "framer-motion"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import React from "react"
+import { PlayerAvatar } from "./player-avatar"
 
 interface VoteStatisticsProps {
   votes: {
@@ -249,19 +250,13 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
                     <TooltipTrigger asChild>
                       <div className="ml-1 cursor-help flex items-center gap-1">
                         {getVoterInfo(value).map((voter, idx) => (
-                          <div key={idx} className="w-5 h-5 rounded-full overflow-hidden">
-                            {voter.avatarStyle && voter.avatarSeed ? (
-                              <img
-                                src={`https://api.dicebear.com/7.x/${voter.avatarStyle}/svg?seed=${encodeURIComponent(voter.avatarSeed)}`}
-                                alt={voter.name + "'s avatar"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-muted flex items-center justify-center text-[10px]">
-                                {voter.name.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
+                          <PlayerAvatar
+                            key={idx}
+                            name={voter.name}
+                            avatarStyle={voter.avatarStyle || undefined}
+                            avatarSeed={voter.avatarSeed || undefined}
+                            size="sm"
+                          />
                         ))}
                       </div>
                     </TooltipTrigger>
@@ -284,10 +279,11 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
                 <TooltipTrigger asChild>
                   <div className="w-5 h-5 rounded-full overflow-hidden opacity-50 bg-muted flex items-center justify-center border border-border">
                     {player.avatarStyle && player.avatarSeed ? (
-                      <img
-                        src={`https://api.dicebear.com/7.x/${player.avatarStyle}/svg?seed=${encodeURIComponent(player.avatarSeed)}`}
-                        alt={player.name + "'s avatar"}
-                        className="w-full h-full object-cover"
+                      <PlayerAvatar
+                        name={player.name}
+                        avatarStyle={player.avatarStyle || undefined}
+                        avatarSeed={player.avatarSeed || undefined}
+                        size="sm"
                       />
                     ) : (
                       <span className="text-[10px]">⏳</span>
