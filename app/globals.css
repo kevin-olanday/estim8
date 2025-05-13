@@ -95,3 +95,32 @@ body::before {
   50% { background-position: 100% 50%, center; }
   100% { background-position: 0% 50%, center; }
 }
+
+/* Dice button animations */
+@keyframes diceIdle {
+  0% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-4px) rotate(5deg); }
+  100% { transform: translateY(0) rotate(-5deg); }
+}
+.animate-dice-idle {
+  animation: diceIdle 2.2s ease-in-out infinite;
+}
+@keyframes diceBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-8px) scale(1.1); }
+  50% { transform: translateY(-4px) scale(1.05); }
+  70% { transform: translateY(-8px) scale(1.1); }
+}
+.hover\:animate-dice-bounce:hover {
+  animation: diceBounce 0.5s cubic-bezier(.36,1.56,.64,1) 1;
+}
+.hover\:shadow-dice-glow:hover {
+  box-shadow: 0 0 0 3px #a5b4fc, 0 0 8px 2px #818cf8;
+}
+@keyframes diceSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(540deg); }
+}
+.dice-spin {
+  animation: diceSpin 0.5s cubic-bezier(.36,1.56,.64,1) 1;
+}
