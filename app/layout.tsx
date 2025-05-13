@@ -74,7 +74,7 @@ export default function RootLayout({
               <div>
                 {children}
               </div>
-              <footer className="fixed left-0 bottom-0 w-full border-t border-border bg-background py-4 flex justify-center items-center text-sm text-muted-foreground z-50">
+              <footer className="relative left-0 bottom-0 w-full border-t border-border bg-background py-4 flex justify-center items-center text-sm text-muted-foreground z-50">
                 <span className="flex items-center gap-2">
                   Designed and developed with
                   <span className="text-pink-400">❤️</span>
@@ -83,7 +83,7 @@ export default function RootLayout({
                     href="https://KevinOlanday.com"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-2 px-3 py-1 rounded-full font-bold text-sm bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow hover:brightness-110 transition border border-accent/40"
+                    className="ml-2 px-3 py-1 rounded-full font-bold text-sm bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow hover:brightness-110 transition border border-indigo-200"
                   >
                     Kevin Olanday
                   </a>
