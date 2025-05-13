@@ -7,7 +7,7 @@ import { VoteStatistics } from "@/app/components/room/vote-statistics"
 import { Confetti } from "@/app/components/ui/confetti"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import { CheckCircle, BarChart2, Hand } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import type { Deck } from "@/types/card"
 import ThemeSelectorModal from "./theme-selector-modal"
 import CardFan from "./card-fan"
@@ -528,58 +528,56 @@ export default function VotingPanel({
         </div>
 
         {/* --- Vote Reveal Section --- */}
-        {currentStory?.votesRevealed ? (
-          <motion.div>
-            <VoteStatistics
-              votes={votes}
-              deck={deck}
-              currentUserId={roomData?.currentUserId}
-              players={players}
-              isHost={isHost}
-              onComplete={handleCompleteStory}
-              votesRevealed={currentStory?.votesRevealed}
-              deckTheme={deckTheme}
-              completeDisabled={!currentStory?.id || !currentStory?.votesRevealed}
-            />
-          </motion.div>
-        ) : (
-          players.length > 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex justify-center mt-8"
+        {currentStory?.votesRevealed && (
+          <VoteStatistics
+            votes={votes}
+            deck={deck}
+            currentUserId={roomData?.currentUserId}
+            players={players}
+            isHost={isHost}
+            onComplete={handleCompleteStory}
+            votesRevealed={currentStory?.votesRevealed}
+            deckTheme={deckTheme}
+            completeDisabled={!currentStory?.id || !currentStory?.votesRevealed}
+          />
+        )}
+        {!currentStory?.votesRevealed && players.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="flex justify-center mt-8"
+          >
+            <div
+              className={
+                votes.length === players.length
+                  ? `relative flex items-center gap-2 px-6 py-2 rounded-full border border-accent/40 bg-accent/10 shadow-inner text-accent font-semibold text-base overflow-hidden ${allInCelebration ? 'shimmer' : ''}`
+                  : "flex items-center gap-2 px-5 py-2 rounded-lg border border-border bg-muted/60 shadow-sm text-muted-foreground font-semibold text-base"
+              }
+              style={{ boxShadow: votes.length === players.length && allInCelebration ? '0 2px 16px 0 rgba(99,102,241,0.10) inset' : undefined }}
             >
-              <div
-                className={
-                  votes.length === players.length
-                    ? `relative flex items-center gap-2 px-6 py-2 rounded-full border border-accent/40 bg-accent/10 shadow-inner text-accent font-semibold text-base overflow-hidden ${allInCelebration ? 'shimmer' : ''}`
-                    : "flex items-center gap-2 px-5 py-2 rounded-lg border border-border bg-muted/60 shadow-sm text-muted-foreground font-semibold text-base"
-                }
-                style={{ boxShadow: votes.length === players.length && allInCelebration ? '0 2px 16px 0 rgba(99,102,241,0.10) inset' : undefined }}
-              >
-                {votes.length === players.length ? (
-                  <span className={allInCelebration ? 'pulse-ring relative' : ''} style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
-                    <CheckCircle className="w-6 h-6 mr-1 z-10" />
-                    {allInCelebration && (
-                      <span className="sparkle">
-                        <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                          <path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07-7.07l-1.42 1.42M6.34 17.66l-1.42 1.42M17.66 17.66l-1.42-1.42M6.34 6.34L4.92 4.92" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </span>
-                    )}
-                  </span>
-                ) : (
-                  <>
-                    <svg className="w-6 h-6 mr-2 text-accent" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>
-                  </>
-                )}
-                {votes.length === players.length
-                  ? "All votes in"
-                  : <span className="text-base font-semibold">{`${votes.length} of ${players.length} votes cast`}</span>}
-              </div>
-            </motion.div>
-          )
+              {votes.length === players.length ? (
+                <span className={allInCelebration ? 'pulse-ring relative' : ''} style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+                  <CheckCircle className="w-6 h-6 mr-1 z-10" />
+                  {allInCelebration && (
+                    <span className="sparkle">
+                      <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                        <path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07-7.07l-1.42 1.42M6.34 17.66l-1.42 1.42M17.66 17.66l-1.42-1.42M6.34 6.34L4.92 4.92" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <>
+                  <svg className="w-6 h-6 mr-2 text-accent" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </>
+              )}
+              {votes.length === players.length
+                ? "All votes in"
+                : <span className="text-base font-semibold">{`${votes.length} of ${players.length} votes cast`}</span>}
+            </div>
+          </motion.div>
         )}
       </div>
       {/* Manual Override Modal */}

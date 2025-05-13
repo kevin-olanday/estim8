@@ -114,12 +114,12 @@ export default function Home() {
           <div className="h-5/6 w-[2px] bg-white/10 backdrop-blur-md rounded-full shadow-lg mx-4" />
         </div>
         {/* Right column */}
-        <section className="flex-1 flex flex-col justify-center items-center">
+        <section className="flex flex-col justify-center items-center">
           <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="w-full max-w-xs sm:max-w-md md:max-w-lg min-h-[500px] flex flex-col justify-start rounded-2xl shadow-2xl shadow-indigo-900/40 bg-white/10 border border-white/10 backdrop-blur-md p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8"
+            className="w-[400px] md:w-[420px] min-h-[500px] flex flex-col justify-start rounded-2xl shadow-2xl shadow-indigo-900/40 bg-white/10 border border-white/10 backdrop-blur-md p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 overflow-x-hidden"
           >
             <Tabs defaultValue={tab} value={tab} onValueChange={setTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-2">
@@ -128,37 +128,37 @@ export default function Home() {
               </TabsList>
               <TabsContent value="join">
                 <Card className="bg-transparent shadow-none border-0 w-full">
-                  <CardHeader>
-                    <CardTitle className="text-white">Join an existing room</CardTitle>
-                    <CardDescription className="text-slate-400">Enter a room code to join an existing session</CardDescription>
+                  <CardHeader className="w-full">
+                    <CardTitle className="w-full text-white">Join an existing room</CardTitle>
+                    <CardDescription className="w-full text-slate-400">Enter a room code to join an existing session</CardDescription>
                   </CardHeader>
-                  <form action={joinFormAction}>
-                    <CardContent>
+                  <form action={joinFormAction} className="w-full">
+                    <CardContent className="w-full">
                       <div className="grid w-full items-center gap-2">
                         {/* Room Code Input */}
-                        <div className="flex flex-col space-y-1">
-                          <div className="relative flex items-center">
+                        <div className="flex flex-col space-y-1 w-full">
+                          <div className="relative flex items-center w-full">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
                               <Hash size={18} />
                             </span>
                             <Input
                               name="roomCode"
                               placeholder="Room code (e.g. ABCD123)"
-                              className="pl-10 text-base sm:text-xl tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              className="w-full pl-10 text-base sm:text-xl tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             />
                           </div>
                           {/* Server action error display */}
                           {typeof joinState?.error === 'string' && (
-                            <span className="text-xs text-red-500 mt-1 ml-2 text-left">{joinState.error}</span>
+                            <span className="text-xs text-red-500 mt-1 ml-2 text-left w-full">{joinState.error}</span>
                           )}
                         </div>
                         {/* User Name Input */}
-                        <div className="flex flex-col space-y-1.5 relative">
+                        <div className="flex flex-col space-y-1.5 relative w-full">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
-                          <Input name="playerName" placeholder="Your name" className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                          <Input name="playerName" placeholder="Your name" className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                         </div>
                         {/* Avatar Customization Section */}
-                        <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2">
+                        <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2 w-full">
                           <legend className="px-2 text-sm font-semibold text-muted-foreground mb-2">Customize Avatar</legend>
                           <AvatarBuilder onAvatarChange={(_, options) => setAvatarOptions(options)} />
                           {/* Hidden input to submit avatar info as JSON */}
@@ -167,7 +167,7 @@ export default function Home() {
                         </fieldset>
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="w-full">
                       <Button type="submit" className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:brightness-110 active:scale-95 transition-all duration-200 text-white text-base py-2">
                         Join Room
                       </Button>
@@ -177,28 +177,28 @@ export default function Home() {
               </TabsContent>
               <TabsContent value="create">
                 <Card className="bg-transparent shadow-none border-0 w-full">
-                  <CardHeader>
-                    <CardTitle className="text-white">Create a new room</CardTitle>
-                    <CardDescription className="text-slate-400">Start a new Planning Poker session</CardDescription>
+                  <CardHeader className="w-full">
+                    <CardTitle className="w-full text-white">Create a new room</CardTitle>
+                    <CardDescription className="w-full text-slate-400">Start a new Planning Poker session</CardDescription>
                   </CardHeader>
-                  <form onSubmit={handleCreateRoom}>
-                    <CardContent>
+                  <form onSubmit={handleCreateRoom} className="w-full">
+                    <CardContent className="w-full">
                       <div className="grid w-full items-center gap-2">
                         {/* Room Name Input */}
-                        <div className="flex flex-col space-y-1.5 relative">
+                        <div className="flex flex-col space-y-1.5 relative w-full">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><Crown size={18} /></span>
-                          <Input name="roomName" placeholder="Room name (optional)" className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                          <Input name="roomName" placeholder="Room name (optional)" className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                         </div>
                         {/* Host Name Input */}
-                        <div className="flex flex-col space-y-1.5 relative">
+                        <div className="flex flex-col space-y-1.5 relative w-full">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
-                          <Input ref={nameInputRef} name="hostName" placeholder="Your name (as host)" required className="pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                          <Input ref={nameInputRef} name="hostName" placeholder="Your name (as host)" required className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                         </div>
                         {/* Deck Type */}
-                        <div className="flex flex-col space-y-1.5">
+                        <div className="flex flex-col space-y-1.5 w-full">
                           <label className="text-sm font-medium text-white">Deck Type</label>
                           <Select name="deckType" defaultValue={DeckType.FIBONACCI}>
-                            <SelectTrigger className="focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <SelectTrigger className="w-full focus:outline-none focus:ring-2 focus:ring-indigo-400">
                               <SelectValue placeholder="Select deck type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -213,7 +213,7 @@ export default function Home() {
                           </Select>
                         </div>
                         {/* Avatar Customization Section */}
-                        <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2">
+                        <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2 w-full">
                           <legend className="px-2 text-sm font-semibold text-muted-foreground mb-2">Customize Avatar</legend>
                           <AvatarBuilder onAvatarChange={(_, options) => setHostAvatarOptions(options)} />
                           <input type="hidden" name="avatarStyle" value="big-smile" />
@@ -221,7 +221,7 @@ export default function Home() {
                         </fieldset>
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="w-full">
                       <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:brightness-110 active:scale-95 transition-all duration-200 text-white text-base py-2">
                         {loading ? <LoadingSpinner size={20} className="mr-2" /> : null}
                         Create Room

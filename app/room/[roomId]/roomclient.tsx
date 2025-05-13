@@ -299,7 +299,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   }, [channel])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
       <RoomHeader 
         roomCode={roomData.code} 
         roomName={roomData.name} 
@@ -308,18 +308,14 @@ function RoomClientInner({ roomData }: { roomData: any }) {
       />
       <EmojiOverlay emojis={emojis} />
       {/* Emoji Toolbox Panel */}
-          <div
-        className="fixed bottom-0 left-0 z-50 w-full flex items-center gap-3 p-4 bg-gradient-to-t from-background/80 via-surface/80 to-background/60 backdrop-blur-xl"
-        style={{
-          borderTop: '1.5px solid var(--accent, #7c3aed)',
-          boxShadow: '0 -8px 32px 0 rgba(80,60,180,0.18)',
-        }}
+      <div
+        className="fixed bottom-0 left-0 z-50 w-full flex flex-row items-center gap-3 p-4 bg-surface border-t border-border md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl"
       >
         {EMOJI_CHOICES.map((emoji) => (
           <button
             key={emoji}
             type="button"
-            className="flex-1 h-16 flex items-center justify-center text-4xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+            className="flex-1 h-16 flex items-center justify-center text-4xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95 md:flex-none md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border md:mb-0"
             onClick={() => sendEmoji(emoji)}
             aria-label={`Send ${emoji}`}
             disabled={emojis.length >= EMOJI_LIMIT}
@@ -332,63 +328,64 @@ function RoomClientInner({ roomData }: { roomData: any }) {
           </button>
         ))}
       </div>
-      <main className="flex-1 flex justify-center">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
-  <div 
-    className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[85vw] md:w-[75vw] max-w-7xl mx-auto"
-    style={{
-      boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
-    }}
-  >
-    <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
-    
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
-      {/* Left Column (2/3 width on large screens) */}
-      <section className="lg:col-span-2 space-y-6">
-        <CurrentStory story={currentStory} isHost={roomData.isHost} />
-        <Separator />
-        <VotingPanel
-          deck={roomData.deck}
-          currentVote={roomData.currentUserVote}
-          isHost={roomData.isHost}
-          storyId={currentStory?.id}
-          votes={localVotes}
-          players={roomData.players}
-          roomData={roomData}
-        />
-      </section>
       
-      {/* Right Column (1/3 width on large screens) */}
-      <aside className="space-y-6">
-        <StoriesPanel
-          stories={roomData.stories}
-          completedStories={localCompletedStories}
-          isHost={roomData.isHost}
-          revealedVotes={revealedVotes}
-        />
-        <PlayersPanel
-          players={roomData.players}
-          hostId={roomData.hostId}
-          currentPlayerId={roomData.currentPlayerId}
-          votesRevealed={currentStory?.votesRevealed}
-          deck={roomData.deck}
-        />
-        {roomData.isHost && (
-          <HostControls
-            currentStoryId={roomData.currentStory?.id}
-            votesRevealed={roomData.votesRevealed}
-            hasVotes={roomData.currentVotes.length > 0}
-            allPlayersVoted={allPlayersVoted}
-            storyStatus={roomData.currentStory?.status}
-            currentDeckType={roomData.deckType}
-            currentDeck={roomData.deck}
-          />
-        )}
-      </aside>
-    </div>
-  </div>
-</div>
-      </main>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div 
+            className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[85vw] md:w-[75vw] max-w-7xl mx-auto"
+            style={{
+              boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
+            }}
+          >
+            <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
+              {/* Left Column (2/3 width on large screens) */}
+              <section className="lg:col-span-2 space-y-6">
+                <CurrentStory story={currentStory} isHost={roomData.isHost} />
+                <Separator />
+                <VotingPanel
+                  deck={roomData.deck}
+                  currentVote={roomData.currentUserVote}
+                  isHost={roomData.isHost}
+                  storyId={currentStory?.id}
+                  votes={localVotes}
+                  players={roomData.players}
+                  roomData={roomData}
+                />
+              </section>
+              
+              {/* Right Column (1/3 width on large screens) */}
+              <aside className="space-y-6">
+                <StoriesPanel
+                  stories={roomData.stories}
+                  completedStories={localCompletedStories}
+                  isHost={roomData.isHost}
+                  revealedVotes={revealedVotes}
+                />
+                <PlayersPanel
+                  players={roomData.players}
+                  hostId={roomData.hostId}
+                  currentPlayerId={roomData.currentPlayerId}
+                  votesRevealed={currentStory?.votesRevealed}
+                  deck={roomData.deck}
+                />
+                {roomData.isHost && (
+                  <HostControls
+                    currentStoryId={roomData.currentStory?.id}
+                    votesRevealed={roomData.votesRevealed}
+                    hasVotes={roomData.currentVotes.length > 0}
+                    allPlayersVoted={allPlayersVoted}
+                    storyStatus={roomData.currentStory?.status}
+                    currentDeckType={roomData.deckType}
+                    currentDeck={roomData.deck}
+                  />
+                )}
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

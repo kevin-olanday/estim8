@@ -26,11 +26,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="icon" href="/v9/favicon.ico" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className + " flex flex-col md:min-h-screen"}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <NotificationProvider>
-            {children}
-            <footer className="relative left-0 bottom-0 w-full border-t border-border bg-background py-4 flex justify-center items-center text-sm text-muted-foreground z-50">
+            <main className="flex-1 flex flex-col">
+              {children}
+            </main>
+            <footer className="w-full border-t border-border bg-background py-4 flex justify-center items-center text-sm text-muted-foreground z-50">
               <span className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 w-full px-2 text-center">
                 <span className="flex items-center gap-1 flex-wrap justify-center">
                   Designed and developed with

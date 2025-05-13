@@ -177,14 +177,14 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogoClick(e as any); }}
                 aria-label="Go to home screen"
               />
-              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight ml-2">
+              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight ml-2 hidden sm:inline">
                 | Real-Time Planning Poker for Agile Teams
               </span>
             </div>
           </div>
           {/* Center: Room Name */}
           {currentRoomName && (
-            <div className="flex-1 flex justify-center items-center mt-2 sm:mt-0">
+            <div className="hidden sm:flex flex-1 justify-center items-center mt-2 sm:mt-0">
               <div
                 className="relative group flex items-center"
                 onMouseEnter={() => setHovered(true)}
@@ -217,7 +217,7 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
                 ) : (
                   <div className="flex flex-row items-center group/badge" style={{gap: 6}}>
                     <span
-                      className="px-4 py-1 rounded-xl text-2xl font-extrabold tracking-tight text-accent shadow-sm bg-accent/10 border border-accent/30 transition-colors"
+                      className="px-4 py-1 rounded-xl font-extrabold tracking-tight text-accent shadow-sm bg-accent/10 border border-accent/30 transition-colors text-base sm:text-2xl"
                       style={{
                         textShadow: '0 2px 8px rgba(0,0,0,0.10)',
                         letterSpacing: '0.01em',
@@ -249,37 +249,19 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
             </div>
           )}
           {/* Right: Controls */}
-          <div className="flex items-center gap-1 flex-shrink-0 mt-4 sm:mt-0 self-center sm:self-auto">
+          <div className="flex flex-row items-center gap-2 flex-nowrap justify-center sm:justify-end mt-2 sm:mt-0">
             {roomCode && (
-              <span className="font-mono text-sm font-semibold mr-2 select-all px-4 py-1 rounded-full bg-[linear-gradient(90deg,_#4654F0_0%,_#C25278_100%)] text-white shadow-sm flex items-center gap-1">
+              <span
+                className="min-w-0 font-mono text-sm font-semibold select-all px-2 py-1 rounded-full bg-[linear-gradient(90deg,_#4654F0_0%,_#C25278_100%)] text-white shadow-sm flex items-center gap-1 cursor-pointer"
+                onClick={copyRoomCode}
+                title="Tap to copy Room ID"
+              >
                 <span className="text-white/70 text-xs font-normal">Room ID :</span>
                 <span>{roomCode}</span>
               </span>
             )}
-            <div className="relative">
-              <button 
-                className={`btn-utility ${copied ? 'text-green-500 border-green-500' : ''} transition-all`}
-                style={{
-                  padding: '0.375rem 0.5rem',
-                  transform: copied ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.15s ease, color 0.2s ease, border-color 0.2s ease'
-                }} 
-                onClick={copyRoomCode}
-              >
-                <Copy className="h-4 w-4" />
-              </button>
-              {copied && (
-                <div 
-                  className="absolute left-1/2 -translate-x-1/2 -bottom-6 text-xs font-medium bg-background px-2 py-0.5 rounded-sm border border-border whitespace-nowrap z-10"
-                  style={{ 
-                    animation: 'fadeInOut 1.5s ease-in-out forwards'
-                  }}
-                >
-                  Copied!
-                </div>
-              )}
-            </div>
-            <div className="relative">
+            {/* Share button always visible */}
+            <div className="relative flex-shrink-0 min-w-0">
               <button 
                 className={`btn-utility ${shared ? 'text-blue-500 border-blue-500' : ''} transition-all`}
                 style={{
@@ -302,7 +284,33 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
                 </div>
               )}
             </div>
-            <KeyboardShortcuts isHost={isHost} />
+            {/* Copy and Keyboard buttons only on sm+ */}
+            <div className="relative hidden sm:inline-flex">
+              <button 
+                className={`btn-utility ${copied ? 'text-green-500 border-green-500' : ''} transition-all`}
+                style={{
+                  padding: '0.375rem 0.5rem',
+                  transform: copied ? 'scale(1.1)' : 'scale(1)',
+                  transition: 'transform 0.15s ease, color 0.2s ease, border-color 0.2s ease'
+                }} 
+                onClick={copyRoomCode}
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              {copied && (
+                <div 
+                  className="absolute left-1/2 -translate-x-1/2 -bottom-6 text-xs font-medium bg-background px-2 py-0.5 rounded-sm border border-border whitespace-nowrap z-10"
+                  style={{ 
+                    animation: 'fadeInOut 1.5s ease-in-out forwards'
+                  }}
+                >
+                  Copied!
+                </div>
+              )}
+            </div>
+            <div className="hidden sm:inline-flex">
+              <KeyboardShortcuts isHost={isHost} />
+            </div>
           </div>
         </div>
       </header>
