@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Shuffle, Sparkles, Cat, Smile, Glasses as GlassesIcon, Sun, Moon, Star, Shield, Scissors, Palette, Eye, Droplet, Ban, Settings } from "lucide-react"
 import { LoadingSpinner } from "@/app/components/ui/loading-spinner"
+import ReactDOM from "react-dom"
 
 // Define available options for each feature
 const HAIR_OPTIONS = [
@@ -49,6 +50,28 @@ const ACCESSORY_ICONS: Record<string, React.ElementType | string> = {
   "sailormoonCrown": Star, // Sailormoon Crown
   "sleepMask": Moon, // Sleep Mask
   "sunglasses": Sun, // Sunglasses
+};
+
+// Add color label mappings
+const HAIR_COLOR_LABELS: Record<string, string> = {
+  "3a1a00": "Dark Brown",
+  "220f00": "Black",
+  "238d80": "Teal",
+  "605de4": "Purple",
+  "71472d": "Chestnut",
+  "d56c0c": "Ginger",
+  "e2ba87": "Blonde",
+  "e9b729": "Golden Blonde",
+};
+const SKIN_COLOR_LABELS: Record<string, string> = {
+  "8c5a2b": "Deep Brown",
+  "643d19": "Brown",
+  "a47539": "Tan",
+  "c99c62": "Light Tan",
+  "e2ba87": "Beige",
+  "efcc9f": "Light Beige",
+  "f5d7b1": "Ivory",
+  "ffe4c0": "Pale",
 };
 
 interface AvatarBuilderProps {
@@ -233,190 +256,222 @@ export function AvatarBuilder({ onAvatarChange, initialOptions }: AvatarBuilderP
         </button>
       </div>
       {/* Customize Pop-up (was Advanced Controls Popover) */}
-      {showAdvanced && (
-        isMobile ? (
-          <>
-            <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowAdvanced(false)} />
-            <div className="fixed bottom-0 left-0 w-full z-50 bg-background rounded-t-3xl shadow-2xl p-0 px-4 pb-6 flex flex-col items-center animate-slide-up max-h-[80vh] overflow-y-auto transition-all">
-              <div className="sticky top-0 bg-background z-10 flex items-center justify-between w-full border-b border-muted mb-4 pb-2 pt-6">
-                <div className="flex-1 flex justify-center">
-                  <h3 className="text-xl font-bold text-center">Customize</h3>
+      {(typeof window !== "undefined" && document.body && showAdvanced)
+        ? ReactDOM.createPortal(
+            isMobile ? (
+              <>
+                <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowAdvanced(false)} />
+                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-sm z-50 bg-background rounded-t-3xl shadow-2xl p-0 px-4 pb-6 max-h-[60vh] overflow-y-auto transition-all">
+                  <div className="sticky top-0 bg-background z-10 flex items-center justify-between w-full border-b border-muted mb-4 pb-2 pt-6">
+                    <div className="flex-1 flex justify-center">
+                      <h3 className="text-xl font-bold text-center">Customize</h3>
+                    </div>
+                    <button
+                      className="absolute right-4 top-6 text-muted-foreground hover:text-accent p-2 rounded-full focus:outline-none"
+                      onClick={() => setShowAdvanced(false)}
+                      aria-label="Close customize menu"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full px-4 pb-4 pt-2">
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Scissors className="w-4 h-4" /> Hair Style</span>
+                      <Select value={options.hair} onValueChange={v => handleOptionChange('hair', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {HAIR_OPTIONS.map(style => (
+                            <SelectItem key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Palette className="w-4 h-4" /> Hair Color</span>
+                      <Select value={options.hairColor} onValueChange={v => handleOptionChange('hairColor', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {HAIR_COLOR_OPTIONS.map(color => (
+                            <SelectItem key={color} value={color}>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ background: `#${color}` }} />
+                                {HAIR_COLOR_LABELS[color] || color}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Eye className="w-4 h-4" /> Eyes</span>
+                      <Select value={options.eyes} onValueChange={v => handleOptionChange('eyes', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {EYES_OPTIONS.map(style => (
+                            <SelectItem key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Droplet className="w-4 h-4" /> Skin Color</span>
+                      <Select value={options.skinColor} onValueChange={v => handleOptionChange('skinColor', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {SKIN_COLOR_OPTIONS.map(color => (
+                            <SelectItem key={color} value={color}>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ background: `#${color}` }} />
+                                {SKIN_COLOR_LABELS[color] || color}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Smile className="w-4 h-4" /> Mouth</span>
+                      <Select value={options.mouth} onValueChange={v => handleOptionChange('mouth', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {MOUTH_OPTIONS.map(style => (
+                            <SelectItem key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Sparkles className="w-4 h-4" /> Accessory</span>
+                      <Select value={options.accessories[0] || 'none'} onValueChange={v => handleAccessoryChange(v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {ACCESSORIES_OPTIONS.map(acc => (
+                            <SelectItem key={acc} value={acc}>
+                              {acc.charAt(0).toUpperCase() + acc.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  className="absolute right-4 top-6 text-muted-foreground hover:text-accent p-2 rounded-full focus:outline-none"
-                  onClick={() => setShowAdvanced(false)}
-                  aria-label="Close customize menu"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+              </>
+            ) : (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black/40" onClick={() => setShowAdvanced(false)} />
+                <div className="relative z-50 bg-background border border-border rounded-2xl shadow-2xl w-[340px] max-w-full p-0 flex flex-col animate-slide-up max-h-[90vh] overflow-y-auto">
+                  <div className="sticky top-0 bg-background z-10 flex items-center justify-between w-full border-b border-muted mb-4 pb-2 pt-6">
+                    <div className="flex-1 flex justify-center">
+                      <h3 className="text-xl font-bold text-center">Customize</h3>
+                    </div>
+                    <button
+                      className="absolute right-4 top-6 text-muted-foreground hover:text-accent p-2 rounded-full focus:outline-none"
+                      onClick={() => setShowAdvanced(false)}
+                      aria-label="Close customize menu"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full px-4 pb-4 pt-2">
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Scissors className="w-4 h-4" /> Hair Style</span>
+                      <Select value={options.hair} onValueChange={v => handleOptionChange('hair', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {HAIR_OPTIONS.map(style => (
+                            <SelectItem key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Palette className="w-4 h-4" /> Hair Color</span>
+                      <Select value={options.hairColor} onValueChange={v => handleOptionChange('hairColor', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {HAIR_COLOR_OPTIONS.map(color => (
+                            <SelectItem key={color} value={color}>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ background: `#${color}` }} />
+                                {HAIR_COLOR_LABELS[color] || color}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Eye className="w-4 h-4" /> Eyes</span>
+                      <Select value={options.eyes} onValueChange={v => handleOptionChange('eyes', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {EYES_OPTIONS.map(style => (
+                            <SelectItem key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Droplet className="w-4 h-4" /> Skin Color</span>
+                      <Select value={options.skinColor} onValueChange={v => handleOptionChange('skinColor', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {SKIN_COLOR_OPTIONS.map(color => (
+                            <SelectItem key={color} value={color}>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ background: `#${color}` }} />
+                                {SKIN_COLOR_LABELS[color] || color}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Smile className="w-4 h-4" /> Mouth</span>
+                      <Select value={options.mouth} onValueChange={v => handleOptionChange('mouth', v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {MOUTH_OPTIONS.map(style => (
+                            <SelectItem key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Sparkles className="w-4 h-4" /> Accessory</span>
+                      <Select value={options.accessories[0] || 'none'} onValueChange={v => handleAccessoryChange(v)}>
+                        <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {ACCESSORIES_OPTIONS.map(acc => (
+                            <SelectItem key={acc} value={acc}>
+                              {acc.charAt(0).toUpperCase() + acc.slice(1).replace(/([A-Z])/g, ' $1')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-2 w-full px-4 pb-4 pt-2">
-                <div className="flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Scissors className="w-4 h-4" /> Hair Style</span>
-                  <Select value={options.hair} onValueChange={v => handleOptionChange('hair', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {HAIR_OPTIONS.map(style => (
-                        <SelectItem key={style} value={style}>
-                          {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Palette className="w-4 h-4" /> Hair Color</span>
-                  <Select value={options.hairColor} onValueChange={v => handleOptionChange('hairColor', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {HAIR_COLOR_OPTIONS.map(color => (
-                        <SelectItem key={color} value={color}>{color}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Eye className="w-4 h-4" /> Eyes</span>
-                  <Select value={options.eyes} onValueChange={v => handleOptionChange('eyes', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {EYES_OPTIONS.map(style => (
-                        <SelectItem key={style} value={style}>
-                          {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="md:col-span-1 flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Smile className="w-4 h-4" /> Mouth</span>
-                  <Select value={options.mouth} onValueChange={v => handleOptionChange('mouth', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {MOUTH_OPTIONS.map(style => (
-                        <SelectItem key={style} value={style}>
-                          {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="md:col-span-1 flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Sparkles className="w-4 h-4" /> Accessory</span>
-                  <Select value={options.accessories[0] || 'none'} onValueChange={v => handleAccessoryChange(v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {ACCESSORIES_OPTIONS.map(acc => (
-                        <SelectItem key={acc} value={acc}>
-                          {acc.charAt(0).toUpperCase() + acc.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowAdvanced(false)} />
-            <div
-              id="avatar-advanced-popover"
-              ref={popoverRef}
-              className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-background border border-border rounded-2xl shadow-2xl p-0 w-[340px] flex flex-col animate-slide-up"
-            >
-              <div className="sticky top-0 bg-background z-10 flex items-center justify-between w-full border-b border-muted mb-4 pb-2 pt-6">
-                <div className="flex-1 flex justify-center">
-                  <h3 className="text-xl font-bold text-center">Customize</h3>
-                </div>
-                <button
-                  className="absolute right-4 top-6 text-muted-foreground hover:text-accent p-2 rounded-full focus:outline-none"
-                  onClick={() => setShowAdvanced(false)}
-                  aria-label="Close customize menu"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 w-full px-4 pb-4 pt-2">
-                {/* Column 1 */}
-                <div className="flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Scissors className="w-4 h-4" /> Hair Style</span>
-                  <Select value={options.hair} onValueChange={v => handleOptionChange('hair', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {HAIR_OPTIONS.map(style => (
-                        <SelectItem key={style} value={style}>
-                          {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1 mt-2"><Eye className="w-4 h-4" /> Eyes</span>
-                  <Select value={options.eyes} onValueChange={v => handleOptionChange('eyes', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {EYES_OPTIONS.map(style => (
-                        <SelectItem key={style} value={style}>
-                          {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Column 2 */}
-                <div className="flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Palette className="w-4 h-4" /> Hair Color</span>
-                  <Select value={options.hairColor} onValueChange={v => handleOptionChange('hairColor', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {HAIR_COLOR_OPTIONS.map(color => (
-                        <SelectItem key={color} value={color}>{color}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1 mt-2"><Droplet className="w-4 h-4" /> Skin Color</span>
-                  <Select value={options.skinColor} onValueChange={v => handleOptionChange('skinColor', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {SKIN_COLOR_OPTIONS.map(color => (
-                        <SelectItem key={color} value={color}>{color}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="md:col-span-1 flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Smile className="w-4 h-4" /> Mouth</span>
-                  <Select value={options.mouth} onValueChange={v => handleOptionChange('mouth', v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {MOUTH_OPTIONS.map(style => (
-                        <SelectItem key={style} value={style}>
-                          {style.charAt(0).toUpperCase() + style.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="md:col-span-1 flex flex-col">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1"><Sparkles className="w-4 h-4" /> Accessory</span>
-                  <Select value={options.accessories[0] || 'none'} onValueChange={v => handleAccessoryChange(v)}>
-                    <SelectTrigger className="w-full min-h-[40px] mt-0 rounded-lg shadow-sm border border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {ACCESSORIES_OPTIONS.map(acc => (
-                        <SelectItem key={acc} value={acc}>
-                          {acc.charAt(0).toUpperCase() + acc.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </>
-        )
-      )}
+            ),
+            document.body
+          )
+        : null}
     </div>
   )
 }
