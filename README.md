@@ -8,21 +8,23 @@ A real-time, minimal, and collaborative Planning Poker tool for agile teams. Est
 
 ## 📦 Features
 
-- Real-time story voting and estimation
+- Real-time story voting and estimation with Pusher
 - Host controls: reveal/hide votes, reset, skip, and complete stories
-- Supports multiple decks (Fibonacci, T-Shirt, custom, etc.)
+- Multiple voting scales: Fibonacci, T-Shirt sizes, and custom scales
+- Anonymous voting mode (hide votes until everyone has voted)
 - Add, edit, and manage stories in a session
 - Player presence and role management (host/participant)
 - Animated feedback and confetti for revealed votes
 - Export story history to CSV
 - Keyboard shortcuts for fast voting
-- Responsive, minimal UI with theme support
+- Room management with sharing functionality
+- No account required - just create and join rooms
 
 ---
 
 ## 🌐 Live Demo
 
-Coming soon!
+[estim8.kevinolanday.com](https://estim8.kevinolanday.com/)
 
 ---
 
@@ -33,6 +35,8 @@ Coming soon!
 - Node.js >= 18
 - Docker (optional, for containerized deployment)
 - A PostgreSQL database (see `.env.example` for connection string)
+- Pusher account for real-time functionality
+
 
 ### Installation
 
@@ -98,8 +102,8 @@ npm test
 - **State Management**: React Hooks, Context API
 - **Styling**: Tailwind CSS, Custom Animations
 - **UI Components**: Radix UI
-- **Deployment**: Docker, DigitalOcean (or any cloud)
 - **CI/CD**: GitHub Actions
+- **Deployment**: Vercel
 - **Other Tools**: ESLint, Prettier
 
 ---
@@ -109,30 +113,41 @@ npm test
 ```
 app/                       # Next.js app directory (App Router)
 │
-├── actions/               # Server actions (room, story, etc.)
-├── components/            # Reusable UI and room components
-│   ├── room/              # Room-specific components (header, voting, etc.)
-│   └── ui/                # UI primitives (button, input, etc.)
-├── context/               # React context providers (current story, pusher, etc.)
+├── actions/               # Server actions
+│   ├── room-actions.ts    # Room management actions
+│   ├── story-actions.ts   # Story management actions
+│   └── vote-actions.ts    # Voting actions
+├── api/                   # API routes
+│   └── pusher/            # Pusher authentication
+├── components/            # React components
+│   ├── room/              # Room components
+│   └── ui/                # UI components
+├── context/               # React contexts
 ├── hooks/                 # Custom React hooks
-├── room/                  # Room pages and logic
-├── globals.css            # Global styles
-├── layout.tsx             # Root layout for the app
-├── page.tsx               # Main entry page
-components/                # Shared components (theme provider, etc.)
-lib/                       # Utility libraries
-prisma/                    # Prisma schema and migrations
-public/                    # Static assets (favicons, images)
-styles/                    # Additional global styles
-types/                     # TypeScript types
-.env.local                 # Environment variables
-.gitignore                 # Git ignore rules
-package.json               # Project metadata and dependencies
-pnpm-lock.yaml             # Dependency lock file
-tsconfig.json              # TypeScript configuration
+├── room/                  # Room pages
+│   ├── [id]/              # Dynamic room route
+│   └── create/            # Room creation page
+├── layout.tsx             # Root layout
+└── page.tsx               # Home page
+lib/                       # Utility functions
+prisma/                    # Prisma database configuration
+public/                    # Static assets
+components/                # Shared components
+types/                     # TypeScript type definitions
 ```
 
 ---
+
+
+## 🛠️ Database Schema
+
+- **Room**: Represents a planning poker session
+- **Player**: Users participating in a room
+- **Story**: Items to be estimated in a planning session
+- **Vote**: Individual estimations by players
+
+---
+
 
 ## 🧑‍💻 Contributing
 
@@ -146,12 +161,18 @@ tsconfig.json              # TypeScript configuration
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under a custom NonCommercial Attribution License.
+
+- ✅ You MAY use this code for personal, non-profit projects WITH attribution
+- ❌ You MAY NOT use this code for commercial purposes
+- ❌ You MAY NOT redistribute without proper attribution
+
+See the [LICENSE](LICENSE) file for full details.
 
 ---
 
-Developed and maintained by [Your Name or Team]
+Developed and maintained by [Kevin Olanday](kevinolanday.com)
 
 ## 📬 Contact
 
-For support or feedback, open an issue or email [your@email.com](mailto:your@email.com)
+For support or feedback, open an issue or email [kevin.olanday@gmail.com](mailto:kevin.olanday@gmail.com)
