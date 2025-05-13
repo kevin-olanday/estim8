@@ -308,16 +308,25 @@ function RoomClientInner({ roomData }: { roomData: any }) {
       />
       <EmojiOverlay emojis={emojis} />
       {/* Emoji Toolbox Panel */}
-      <div className="fixed top-1/3 left-6 z-50 flex flex-col items-center gap-3 p-4 rounded-3xl border border-accent/30 shadow-2xl backdrop-blur-xl bg-gradient-to-b from-background/80 via-surface/80 to-background/60" style={{ minWidth: 72, boxShadow: '0 8px 32px 0 rgba(80,60,180,0.18), 0 1.5px 8px 0 rgba(80,60,180,0.10) inset', border: '1.5px solid var(--accent, #7c3aed)', background: 'linear-gradient(180deg, rgba(40,30,80,0.85) 0%, rgba(30,20,60,0.85) 100%)' }}>
+          <div
+        className="fixed bottom-0 left-0 z-50 w-full flex items-center gap-3 p-4 bg-gradient-to-t from-background/80 via-surface/80 to-background/60 backdrop-blur-xl"
+        style={{
+          borderTop: '1.5px solid var(--accent, #7c3aed)',
+          boxShadow: '0 -8px 32px 0 rgba(80,60,180,0.18)',
+        }}
+      >
         {EMOJI_CHOICES.map((emoji) => (
           <button
             key={emoji}
             type="button"
-            className="w-12 h-12 flex items-center justify-center text-3xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+            className="flex-1 h-16 flex items-center justify-center text-4xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
             onClick={() => sendEmoji(emoji)}
             aria-label={`Send ${emoji}`}
             disabled={emojis.length >= EMOJI_LIMIT}
-            style={{ opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1, boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)' }}
+            style={{
+              opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
+              boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+            }}
           >
             {emoji}
           </button>
