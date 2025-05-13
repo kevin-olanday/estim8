@@ -35,7 +35,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   const [emojis, setEmojis] = useState<{ id: number, emoji: string, sender?: string }[]>([])
   const emojiId = useRef(0)
   const EMOJI_LIMIT = 10
-  const EMOJI_CHOICES = ["😂", "🎉", "👏", "😍", "👍", "🤩", "🔥"]
+  const EMOJI_CHOICES = ["👍", "🎉", "👏", "😍", "😂", "🤔", "🚀"]
 
   const handleVoteRemoved = useCallback(
     (data: { playerId: string; storyId: string }) => {
@@ -333,56 +333,61 @@ function RoomClientInner({ roomData }: { roomData: any }) {
         ))}
       </div>
       <main className="flex-1 flex justify-center">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="bg-surface rounded-3xl p-6 shadow-xl w-[80vw] max-w-7xl mx-auto">
-            <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
-              {/* Left Column (2/3 width on large screens) */}
-              <section className="lg:col-span-2 space-y-6">
-                <CurrentStory story={currentStory} isHost={roomData.isHost} />
-                <Separator />
-                <VotingPanel
-                  deck={roomData.deck}
-                  currentVote={roomData.currentUserVote}
-                  isHost={roomData.isHost}
-                  storyId={currentStory?.id}
-                  votes={localVotes}
-                  players={roomData.players}
-                  roomData={roomData}
-                />
-              </section>
-              
-              {/* Right Column (1/3 width on large screens) */}
-              <aside className="space-y-6">
-                <StoriesPanel
-                  stories={roomData.stories}
-                  completedStories={localCompletedStories}
-                  isHost={roomData.isHost}
-                  revealedVotes={revealedVotes}
-                />
-                <PlayersPanel
-                  players={roomData.players}
-                  hostId={roomData.hostId}
-                  currentPlayerId={roomData.currentPlayerId}
-                  votesRevealed={currentStory?.votesRevealed}
-                  deck={roomData.deck}
-                />
-                {roomData.isHost && (
-                  <HostControls
-                    currentStoryId={roomData.currentStory?.id}
-                    votesRevealed={roomData.votesRevealed}
-                    hasVotes={roomData.currentVotes.length > 0}
-                    allPlayersVoted={allPlayersVoted}
-                    storyStatus={roomData.currentStory?.status}
-                    currentDeckType={roomData.deckType}
-                    currentDeck={roomData.deck}
-                  />
-                )}
-              </aside>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div 
+    className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[85vw] md:w-[75vw] max-w-7xl mx-auto"
+    style={{
+      boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
+    }}
+  >
+    <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
+    
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
+      {/* Left Column (2/3 width on large screens) */}
+      <section className="lg:col-span-2 space-y-6">
+        <CurrentStory story={currentStory} isHost={roomData.isHost} />
+        <Separator />
+        <VotingPanel
+          deck={roomData.deck}
+          currentVote={roomData.currentUserVote}
+          isHost={roomData.isHost}
+          storyId={currentStory?.id}
+          votes={localVotes}
+          players={roomData.players}
+          roomData={roomData}
+        />
+      </section>
+      
+      {/* Right Column (1/3 width on large screens) */}
+      <aside className="space-y-6">
+        <StoriesPanel
+          stories={roomData.stories}
+          completedStories={localCompletedStories}
+          isHost={roomData.isHost}
+          revealedVotes={revealedVotes}
+        />
+        <PlayersPanel
+          players={roomData.players}
+          hostId={roomData.hostId}
+          currentPlayerId={roomData.currentPlayerId}
+          votesRevealed={currentStory?.votesRevealed}
+          deck={roomData.deck}
+        />
+        {roomData.isHost && (
+          <HostControls
+            currentStoryId={roomData.currentStory?.id}
+            votesRevealed={roomData.votesRevealed}
+            hasVotes={roomData.currentVotes.length > 0}
+            allPlayersVoted={allPlayersVoted}
+            storyStatus={roomData.currentStory?.status}
+            currentDeckType={roomData.deckType}
+            currentDeck={roomData.deck}
+          />
+        )}
+      </aside>
+    </div>
+  </div>
+</div>
       </main>
     </div>
   )
