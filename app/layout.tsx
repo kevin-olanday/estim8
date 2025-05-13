@@ -26,7 +26,9 @@ export default function RootLayout({
         {/* Basic SEO */}
         <title>EstiM8 - Agile Planning Poker</title>
         <meta name="description" content="Real-time Planning Poker for agile teams. Plan smarter, together." />
+        <meta name="keywords" content="EstiM8, collaborative planning poker, agile teams, user story estimation, real-time collaboration, voting scales, anonymous voting, story management, responsive UI, TypeScript, CSS, JavaScript, planning poker application">
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="author" content="Kevin Olanday" />
         <meta name="theme-color" content="#6366f1" />
         {/* Favicon & Manifest */}
         <link rel="icon" href="/v9/favicon.ico" />
@@ -54,7 +56,7 @@ export default function RootLayout({
           '@context': 'https://schema.org',
           '@type': 'WebApplication',
           name: 'EstiM8',
-          url: 'https://estim8.app',
+          url: 'https://estim8.digital',
           description: 'Real-time Planning Poker for agile teams. Plan smarter, together.',
           applicationCategory: 'ProductivityApplication',
           operatingSystem: 'All',
@@ -64,7 +66,7 @@ export default function RootLayout({
             priceCurrency: 'USD',
             availability: 'https://schema.org/InStock',
           },
-          image: 'https://estim8.app/v9/web-app-manifest-512x512.png',
+          image: 'https://estim8.digital/v9/web-app-manifest-512x512.png',
         }) }} />
       </head>
       <body className={inter.className}>
