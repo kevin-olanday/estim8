@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { usePusherContext } from "@/app/context/pusher-context"
 import RoomHeader from "@/app/components/room/room-header"
-import RoomTimer from "@/app/components/room/RoomTimer"
 import VotingPanel from "@/app/components/room/voting-panel"
 import CurrentStory from "@/app/components/room/current-story"
 import PlayersPanel from "@/app/components/room/players-panel"
@@ -386,135 +385,131 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   }, [channel, toast, localPlayers])
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
       <RoomHeader
-        roomId={roomData.id}
-        isHost={roomData.isHost}
-        roomName={roomData.name}
-        players={roomData.players}
-        currentPlayerId={roomData.currentPlayerId}
         roomCode={roomData.code}
+        roomName={roomData.name}
+        isHost={roomData.isHost}
+        hostName={localPlayers.find((p: any) => p.isHost)?.name}
+        players={localPlayers.map((p: any) => ({ id: p.id, name: p.name, isHost: p.isHost }))}
+        currentPlayerId={roomData.currentPlayerId}
+        roomId={roomData.id}
       />
-      <div className="w-full flex justify-center mt-2 mb-4">
-        <RoomTimer isHost={roomData.isHost} roomId={roomData.id} />
+      <EmojiOverlay emojis={emojis} />
+      {/* Mobile: Always-visible emoji panel (hidden when footer is visible) */}
+      {!footerVisible && (
+        <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
+          <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
+            {EMOJI_CHOICES.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+                onClick={() => sendEmoji(emoji)}
+                aria-label={`Send ${emoji}`}
+                disabled={emojis.length >= EMOJI_LIMIT}
+                style={{
+                  opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
+                  boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+                }}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Desktop: Always visible emoji panel */}
+      <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
+        <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
+          React
+        </div>
+        {EMOJI_CHOICES.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+            onClick={() => sendEmoji(emoji)}
+            aria-label={`Send ${emoji}`}
+            disabled={emojis.length >= EMOJI_LIMIT}
+            style={{
+              opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
+              boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+            }}
+          >
+            {emoji}
+          </button>
+        ))}
       </div>
-      <main className="flex-1 flex flex-col items-center justify-start w-full">
-        <EmojiOverlay emojis={emojis} />
-        {/* Mobile: Always-visible emoji panel (hidden when footer is visible) */}
-        {!footerVisible && (
-          <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
-            <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
-              {EMOJI_CHOICES.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
-                  onClick={() => sendEmoji(emoji)}
-                  aria-label={`Send ${emoji}`}
-                  disabled={emojis.length >= EMOJI_LIMIT}
-                  style={{
-                    opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
-                    boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Desktop: Always visible emoji panel */}
-        <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
-          <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
-            React
-          </div>
-          {EMOJI_CHOICES.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
-              onClick={() => sendEmoji(emoji)}
-              aria-label={`Send ${emoji}`}
-              disabled={emojis.length >= EMOJI_LIMIT}
-              style={{
-                opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
-                boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
-              }}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto px-0 sm:px-6 lg:px-8 py-6">
-            <div 
-              className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[90vw] max-w-[1440px] mx-auto"
-              style={{
-                boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
-              }}
-            >
-              {showWelcomeBannerState && (
-                <WelcomeMessage
+      
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto px-0 sm:px-6 lg:px-8 py-6">
+          <div 
+            className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[90vw] max-w-[1440px] mx-auto"
+            style={{
+              boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
+            }}
+          >
+            {showWelcomeBannerState && (
+              <WelcomeMessage
+                isHost={roomData.isHost}
+                roomCode={roomData.code}
+                name={currentPlayer?.name}
+                avatarStyle={currentPlayer?.avatarStyle}
+                avatarSeed={currentPlayer?.avatarSeed}
+              />
+            )}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 mt-4 mb-4">
+              {/* Left Column (2/3 width on large screens) */}
+              <section className="space-y-6">
+                <CurrentStory story={currentStory} isHost={roomData.isHost} />
+                <Separator />
+                <VotingPanel
+                  deck={roomData.deck}
+                  currentVote={roomData.currentUserVote}
                   isHost={roomData.isHost}
-                  roomCode={roomData.code}
-                  name={currentPlayer?.name}
-                  avatarStyle={currentPlayer?.avatarStyle}
-                  avatarSeed={currentPlayer?.avatarSeed}
+                  storyId={currentStory?.id}
+                  votes={localVotes}
+                  players={localPlayers}
+                  roomData={roomData}
+                  celebrationsEnabled={celebrationsEnabled}
                 />
-              )}
+              </section>
               
-              <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 mt-4 mb-4">
-                {/* Left Column (2/3 width on large screens) */}
-                <section className="space-y-6">
-                  <CurrentStory story={currentStory} isHost={roomData.isHost} />
-                  <Separator />
-                  <VotingPanel
-                    deck={roomData.deck}
-                    currentVote={roomData.currentUserVote}
-                    isHost={roomData.isHost}
-                    storyId={currentStory?.id}
-                    votes={localVotes}
-                    players={localPlayers}
-                    roomData={roomData}
+              {/* Right Column (1/3 width on large screens) */}
+              <aside className="space-y-6">
+                <StoriesPanel
+                  stories={roomData.stories}
+                  completedStories={localCompletedStories}
+                  isHost={roomData.isHost}
+                  revealedVotes={revealedVotes}
+                />
+                <PlayersPanel
+                  players={localPlayers}
+                  hostId={roomData.hostId}
+                  currentPlayerId={roomData.currentPlayerId}
+                  votesRevealed={currentStory?.votesRevealed}
+                  deck={roomData.deck}
+                />
+                {roomData.isHost && (
+                  <HostControls
+                    currentStoryId={roomData.currentStory?.id}
+                    votesRevealed={roomData.votesRevealed}
+                    hasVotes={roomData.currentVotes.length > 0}
+                    allPlayersVoted={allPlayersVoted}
+                    storyStatus={roomData.currentStory?.status}
+                    currentDeckType={roomData.deckType}
+                    currentDeck={roomData.deck}
                     celebrationsEnabled={celebrationsEnabled}
+                    setCelebrationsEnabled={setCelebrationsEnabled}
                   />
-                </section>
-                
-                {/* Right Column (1/3 width on large screens) */}
-                <aside className="space-y-6">
-                  <StoriesPanel
-                    stories={roomData.stories}
-                    completedStories={localCompletedStories}
-                    isHost={roomData.isHost}
-                    revealedVotes={revealedVotes}
-                  />
-                  <PlayersPanel
-                    players={localPlayers}
-                    hostId={roomData.hostId}
-                    currentPlayerId={roomData.currentPlayerId}
-                    votesRevealed={currentStory?.votesRevealed}
-                    deck={roomData.deck}
-                  />
-                  {roomData.isHost && (
-                    <HostControls
-                      currentStoryId={roomData.currentStory?.id}
-                      votesRevealed={roomData.votesRevealed}
-                      hasVotes={roomData.currentVotes.length > 0}
-                      allPlayersVoted={allPlayersVoted}
-                      storyStatus={roomData.currentStory?.status}
-                      currentDeckType={roomData.deckType}
-                      currentDeck={roomData.deck}
-                      celebrationsEnabled={celebrationsEnabled}
-                      setCelebrationsEnabled={setCelebrationsEnabled}
-                    />
-                  )}
-                </aside>
-              </div>
+                )}
+              </aside>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
