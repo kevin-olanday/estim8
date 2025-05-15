@@ -20,6 +20,7 @@ export default function Home() {
   const [tab, setTab] = useState("join")
   const [loading, setLoading] = useState(false)
   const [joinLoading, setJoinLoading] = useState(false)
+  const [isReady, setIsReady] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const joinRoomReducer = async (_state: any, formData: FormData) => joinRoom(formData);
   const [joinState, joinFormAction] = useActionState(joinRoomReducer, null);
@@ -30,6 +31,13 @@ export default function Home() {
   // Add state for avatar options
   const [avatarOptions, setAvatarOptions] = useState({})
   const [hostAvatarOptions, setHostAvatarOptions] = useState({})
+
+  // Simulate readiness (replace with real checks if needed)
+  React.useEffect(() => {
+    // If you have async checks, do them here
+    // Example: await fetchInitialData();
+    setIsReady(true)
+  }, [])
 
   // Autofocus name input on tab change or mount
   React.useEffect(() => {
@@ -58,6 +66,14 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-700">
+        <LoadingSpinner size={48} />
+      </div>
+    )
   }
 
   return (
