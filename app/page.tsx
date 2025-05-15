@@ -312,10 +312,6 @@ export default function Home() {
           </motion.div>
         </section>
       </main>
-      <footer className="w-full text-center text-[10px] sm:text-xs text-slate-400 py-2 bg-[#232544] whitespace-nowrap">
-        Designed and developed with <span role="img" aria-label="love">❤️</span> by
-        <span className="inline-block align-middle ml-1 px-2 py-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 text-white font-semibold text-[10px] sm:text-xs whitespace-nowrap">Kevin Olanday</span>
-      </footer>
     </div>
   )
 }
