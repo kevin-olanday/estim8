@@ -14,10 +14,24 @@ const pusher = new Pusher({
 })
 
 export async function POST(req: NextRequest) {
-  const formData = await req.text()
-  const params = new URLSearchParams(formData)
-  const socket_id = params.get("socket_id")!
-  const channel_name = params.get("channel_name")!
+  let socket_id, channel_name;
+
+  // Try to parse as form-urlencoded first
+  const contentType = req.headers.get("content-type") || "";
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    const formData = await req.text();
+    const params = new URLSearchParams(formData);
+    socket_id = params.get("socket_id");
+    channel_name = params.get("channel_name");
+  } else if (contentType.includes("application/json")) {
+    const body = await req.json();
+    socket_id = body.socket_id;
+    channel_name = body.channel_name;
+  }
+
+  if (!socket_id || !channel_name) {
+    return NextResponse.json({ error: "Missing socket_id or channel_name" }, { status: 400 });
+  }
 
   // Await cookies()!
   const cookiesStore = await cookies()

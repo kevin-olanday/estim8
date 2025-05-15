@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { usePusherContext } from "@/app/context/pusher-context"
 import RoomHeader from "@/app/components/room/room-header"
+import RoomTimer from "@/app/components/room/RoomTimer"
 import VotingPanel from "@/app/components/room/voting-panel"
 import CurrentStory from "@/app/components/room/current-story"
 import PlayersPanel from "@/app/components/room/players-panel"
@@ -15,6 +16,7 @@ import { PusherProvider } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import { motion, AnimatePresence } from "framer-motion"
 import axios from "axios"
+import { useToast } from "@/hooks/use-toast"
 
 export default function RoomClient({ roomData }: { roomData: any }) {
   return (
@@ -30,6 +32,8 @@ export default function RoomClient({ roomData }: { roomData: any }) {
 function RoomClientInner({ roomData }: { roomData: any }) {
   const { channel } = usePusherContext()
   const { currentStory, setCurrentStory } = useCurrentStory()
+  const { toast } = useToast();
+  const [localPlayers, setLocalPlayers] = useState(roomData.players)
   const [localVotes, setLocalVotes] = useState<{ playerId: string; playerName: string; value: string; storyId: string }[]>([])
   const [localCompletedStories, setLocalCompletedStories] = useState(roomData.completedStories || [])
   const [emojis, setEmojis] = useState<{ id: number, emoji: string, sender?: string }[]>([])
@@ -54,12 +58,10 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
   const handleVoteRemoved = useCallback(
     (data: { playerId: string; storyId: string }) => {
-      console.log('[RoomClient] Received vote-removed event:', data);
       setLocalVotes((prev) => {
         const newVotes = prev.filter(
           (vote) => vote.playerId !== data.playerId
         );
-        console.log('[RoomClient] Updated localVotes:', newVotes);
         return newVotes;
       });
     },
@@ -79,18 +81,14 @@ function RoomClientInner({ roomData }: { roomData: any }) {
         storyId: v.storyId || "",
       };
     });
-    console.log('[ROOMCLIENT] Initializing votes from roomData:', votesWithAvatars);
     setLocalVotes(votesWithAvatars);
   }, [roomData.currentVotes, roomData.players]);
 
   // Listen for real-time vote submissions and story changes
   useEffect(() => {
     if (!channel) {
-      console.log('[ROOMCLIENT] No channel available yet');
       return;
     }
-
-    console.log('[ROOMCLIENT] Setting up vote handlers for channel:', channel.name);
 
     const handleVoteSubmitted = (data: any) => {
       const player = roomData.players.find((p: any) => p.id === data.playerId);
@@ -103,13 +101,11 @@ function RoomClientInner({ roomData }: { roomData: any }) {
           ...otherVotes,
           { playerId: data.playerId, playerName, value: data.value, storyId: sid }
         ];
-        console.log('[RoomClient] Updated localVotes (vote-submitted):', newVotes);
         return newVotes;
       });
     }
 
     const handleActiveStoryChanged = (data: any) => {
-      console.log('[ROOMCLIENT] active-story-changed event received:', data);
       setCurrentStory({
         id: data.id,
         title: data.title,
@@ -123,7 +119,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
     // Bind to events using the channel directly
     const bindEvents = () => {
-      console.log('[ROOMCLIENT] Binding events to channel:', channel.name);
       channel.bind("vote-submitted", handleVoteSubmitted);
       channel.bind("vote-removed", handleVoteRemoved);
       channel.bind("active-story-changed", handleActiveStoryChanged);
@@ -131,13 +126,11 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
     // Bind to subscription success
     const handleSubscriptionSucceeded = () => {
-      console.log('[ROOMCLIENT] Channel subscription succeeded');
       bindEvents();
     };
 
     // Bind to subscription error
     const handleSubscriptionError = (error: any) => {
-      console.error('[ROOMCLIENT] Channel subscription error:', error);
     };
 
     // Set up event bindings
@@ -146,12 +139,10 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
     // If already subscribed, bind events immediately
     if (channel.subscribed) {
-      console.log('[ROOMCLIENT] Channel already subscribed, binding events immediately');
       bindEvents();
     }
 
     return () => {
-      console.log('[ROOMCLIENT] Unbinding vote handlers');
       channel.unbind("vote-submitted", handleVoteSubmitted);
       channel.unbind("vote-removed", handleVoteRemoved);
       channel.unbind("active-story-changed", handleActiveStoryChanged);
@@ -168,15 +159,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
         localVotes.some((vote: any) => vote.playerId === player.id)
     )
 
-  console.log('[ROOMCLIENT] allPlayersVoted calculation:', {
-    playerCount: roomData.players.length,
-    voteCount: localVotes.length,
-    players: roomData.players.map((p: any) => p.id),
-    votes: localVotes.map((v: any) => v.playerId),
-    allPlayersVoted
-  });
-
-  // Add a debug effect to monitor channel state
   useEffect(() => {
     if (!channel) return;
     console.log('[ROOMCLIENT] Channel state:', {
@@ -209,7 +191,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
             storyId: sid
           };
         });
-        console.log('[RoomClient] Updated localVotes (votes-revealed):', votesWithAvatars);
         setLocalVotes(votesWithAvatars);
       }
     };
@@ -232,8 +213,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     if (!channel) return
 
     const handleStoryCompleted = (data: any) => {
-      console.log('[RoomClient] Story completed event received:', data)
-      
       // Clear votes
       setLocalVotes([])
       
@@ -277,9 +256,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   // Filter localVotes for the current story before passing to StoriesPanel
   const activeStoryId = currentStory?.id;
   const revealedVotes = localVotes.filter(v => v.storyId === activeStoryId);
-  console.log('[RoomClient] localVotes:', localVotes);
-  console.log('[RoomClient] activeStoryId:', activeStoryId);
-  console.log('[RoomClient] revealedVotes:', revealedVotes);
 
   const getCurrentPlayerName = () => {
     const player = roomData.players.find((p: any) => p.id === roomData.currentPlayerId)
@@ -293,7 +269,6 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     try {
       await axios.post("/api/emoji", { emoji: chosen, roomId: roomData.id, sender })
     } catch (e) {
-      console.error("Failed to send emoji:", e)
     }
   }
 
@@ -338,129 +313,208 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     return () => observer.disconnect();
   }, []);
 
+  // Real-time player updates
+  useEffect(() => {
+    if (!channel) return;
+
+    const handlePlayerJoined = (data: any) => {
+      setLocalPlayers((prev: any[]) => {
+        if (prev.some((p) => p.id === data.playerId)) {
+          return prev.map((p) =>
+            p.id === data.playerId ? { ...p, isOnline: true } : p
+          )
+        }
+        return [
+          ...prev,
+          {
+            id: data.playerId,
+            name: data.playerName,
+            emoji: "👤",
+            vote: null,
+            isOnline: true,
+            isHost: false,
+            avatarStyle: data.avatarStyle || null,
+            avatarSeed: data.avatarSeed || null,
+          },
+        ]
+      })
+    }
+
+    const handlePlayerLeft = (data: { playerId: string, playerName?: string }) => {
+      setLocalPlayers((prev: any[]) => prev.filter((p) => p.id !== data.playerId))
+      if (data.playerName) {
+        toast({ id: `player-left-${data.playerId}`, description: `${data.playerName} left the room.` })
+      }
+    }
+
+    const handleHostTransferred = (data: { newHostId: string, oldHostId: string, newHostName?: string }) => {
+      setLocalPlayers((prev: any[]) =>
+        prev.map((p) =>
+          p.id === data.newHostId
+            ? { ...p, isHost: true }
+            : p.id === data.oldHostId
+            ? { ...p, isHost: false }
+            : p
+        )
+      )
+      if (data.newHostName) {
+        toast({ id: `host-transferred-${data.newHostId}`, description: `${data.newHostName} is now the host.` })
+      }
+    }
+
+    const handlePlayerUpdated = (data: any) => {
+      setLocalPlayers((prev: any[]) =>
+        prev.map((p) =>
+          p.id === data.id
+            ? { ...p, name: data.name, avatarStyle: data.avatarStyle, avatarSeed: data.avatarSeed }
+            : p
+        )
+      )
+    }
+
+    channel.bind("player-joined", handlePlayerJoined)
+    channel.bind("player-left", handlePlayerLeft)
+    channel.bind("host-transferred", handleHostTransferred)
+    channel.bind("player-updated", handlePlayerUpdated)
+
+    return () => {
+      channel.unbind("player-joined", handlePlayerJoined)
+      channel.unbind("player-left", handlePlayerLeft)
+      channel.unbind("host-transferred", handleHostTransferred)
+      channel.unbind("player-updated", handlePlayerUpdated)
+    }
+  }, [channel, toast, localPlayers])
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <RoomHeader 
-        roomCode={roomData.code} 
-        roomName={roomData.name} 
+    <div className="min-h-screen flex flex-col">
+      <RoomHeader
+        roomId={roomData.id}
         isHost={roomData.isHost}
-        hostName={roomData.players?.find((p: any) => p.isHost)?.name}
+        roomName={roomData.name}
+        players={roomData.players}
+        currentPlayerId={roomData.currentPlayerId}
+        roomCode={roomData.code}
       />
-      <EmojiOverlay emojis={emojis} />
-      {/* Mobile: Always-visible emoji panel (hidden when footer is visible) */}
-      {!footerVisible && (
-        <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
-          <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
-            {EMOJI_CHOICES.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
-                onClick={() => sendEmoji(emoji)}
-                aria-label={`Send ${emoji}`}
-                disabled={emojis.length >= EMOJI_LIMIT}
-                style={{
-                  opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
-                  boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      {/* Desktop: Always visible emoji panel */}
-      <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
-        <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
-          React
-        </div>
-        {EMOJI_CHOICES.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
-            onClick={() => sendEmoji(emoji)}
-            aria-label={`Send ${emoji}`}
-            disabled={emojis.length >= EMOJI_LIMIT}
-            style={{
-              opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
-              boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
-            }}
-          >
-            {emoji}
-          </button>
-        ))}
+      <div className="w-full flex justify-center mt-2 mb-4">
+        <RoomTimer isHost={roomData.isHost} roomId={roomData.id} />
       </div>
-      
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto px-0 sm:px-6 lg:px-8 py-6">
-          <div 
-            className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[85vw] md:w-[75vw] max-w-7xl mx-auto"
-            style={{
-              boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
-            }}
-          >
-            {showWelcomeBannerState && (
-              <WelcomeMessage
-                isHost={roomData.isHost}
-                roomCode={roomData.code}
-                name={currentPlayer?.name}
-                avatarStyle={currentPlayer?.avatarStyle}
-                avatarSeed={currentPlayer?.avatarSeed}
-              />
-            )}
-            
-            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 mt-4 mb-4">
-              {/* Left Column (2/3 width on large screens) */}
-              <section className="space-y-6">
-                <CurrentStory story={currentStory} isHost={roomData.isHost} />
-                <Separator />
-                <VotingPanel
-                  deck={roomData.deck}
-                  currentVote={roomData.currentUserVote}
+      <main className="flex-1 flex flex-col items-center justify-start w-full">
+        <EmojiOverlay emojis={emojis} />
+        {/* Mobile: Always-visible emoji panel (hidden when footer is visible) */}
+        {!footerVisible && (
+          <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
+            <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
+              {EMOJI_CHOICES.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+                  onClick={() => sendEmoji(emoji)}
+                  aria-label={`Send ${emoji}`}
+                  disabled={emojis.length >= EMOJI_LIMIT}
+                  style={{
+                    opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
+                    boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Desktop: Always visible emoji panel */}
+        <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
+          <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
+            React
+          </div>
+          {EMOJI_CHOICES.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+              onClick={() => sendEmoji(emoji)}
+              aria-label={`Send ${emoji}`}
+              disabled={emojis.length >= EMOJI_LIMIT}
+              style={{
+                opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
+                boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto px-0 sm:px-6 lg:px-8 py-6">
+            <div 
+              className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[90vw] max-w-[1440px] mx-auto"
+              style={{
+                boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
+              }}
+            >
+              {showWelcomeBannerState && (
+                <WelcomeMessage
                   isHost={roomData.isHost}
-                  storyId={currentStory?.id}
-                  votes={localVotes}
-                  players={roomData.players}
-                  roomData={roomData}
-                  celebrationsEnabled={celebrationsEnabled}
+                  roomCode={roomData.code}
+                  name={currentPlayer?.name}
+                  avatarStyle={currentPlayer?.avatarStyle}
+                  avatarSeed={currentPlayer?.avatarSeed}
                 />
-              </section>
+              )}
               
-              {/* Right Column (1/3 width on large screens) */}
-              <aside className="space-y-6">
-                <StoriesPanel
-                  stories={roomData.stories}
-                  completedStories={localCompletedStories}
-                  isHost={roomData.isHost}
-                  revealedVotes={revealedVotes}
-                />
-                <PlayersPanel
-                  players={roomData.players}
-                  hostId={roomData.hostId}
-                  currentPlayerId={roomData.currentPlayerId}
-                  votesRevealed={currentStory?.votesRevealed}
-                  deck={roomData.deck}
-                />
-                {roomData.isHost && (
-                  <HostControls
-                    currentStoryId={roomData.currentStory?.id}
-                    votesRevealed={roomData.votesRevealed}
-                    hasVotes={roomData.currentVotes.length > 0}
-                    allPlayersVoted={allPlayersVoted}
-                    storyStatus={roomData.currentStory?.status}
-                    currentDeckType={roomData.deckType}
-                    currentDeck={roomData.deck}
+              <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 mt-4 mb-4">
+                {/* Left Column (2/3 width on large screens) */}
+                <section className="space-y-6">
+                  <CurrentStory story={currentStory} isHost={roomData.isHost} />
+                  <Separator />
+                  <VotingPanel
+                    deck={roomData.deck}
+                    currentVote={roomData.currentUserVote}
+                    isHost={roomData.isHost}
+                    storyId={currentStory?.id}
+                    votes={localVotes}
+                    players={localPlayers}
+                    roomData={roomData}
                     celebrationsEnabled={celebrationsEnabled}
-                    setCelebrationsEnabled={setCelebrationsEnabled}
                   />
-                )}
-              </aside>
+                </section>
+                
+                {/* Right Column (1/3 width on large screens) */}
+                <aside className="space-y-6">
+                  <StoriesPanel
+                    stories={roomData.stories}
+                    completedStories={localCompletedStories}
+                    isHost={roomData.isHost}
+                    revealedVotes={revealedVotes}
+                  />
+                  <PlayersPanel
+                    players={localPlayers}
+                    hostId={roomData.hostId}
+                    currentPlayerId={roomData.currentPlayerId}
+                    votesRevealed={currentStory?.votesRevealed}
+                    deck={roomData.deck}
+                  />
+                  {roomData.isHost && (
+                    <HostControls
+                      currentStoryId={roomData.currentStory?.id}
+                      votesRevealed={roomData.votesRevealed}
+                      hasVotes={roomData.currentVotes.length > 0}
+                      allPlayersVoted={allPlayersVoted}
+                      storyStatus={roomData.currentStory?.status}
+                      currentDeckType={roomData.deckType}
+                      currentDeck={roomData.deck}
+                      celebrationsEnabled={celebrationsEnabled}
+                      setCelebrationsEnabled={setCelebrationsEnabled}
+                    />
+                  )}
+                </aside>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

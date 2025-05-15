@@ -1,29 +1,34 @@
 "use client"
 
-import { Copy, Share2, Pencil, X, Check } from "lucide-react"
+import { Copy, Share2, Pencil, X, Check, LogOut, Keyboard } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { copyToClipboard } from "@/lib/copy-to-clipboard"
-import { KeyboardShortcuts } from "@/app/components/room/keyboard-shortcuts"
+import { KeyboardShortcutsContent } from "@/app/components/room/keyboard-shortcuts-content"
 import { useRouter } from "next/navigation"
 import { updateRoomName as updateRoomNameAction } from "@/app/actions/room-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 interface RoomHeaderProps {
   roomCode: string
   roomName?: string
   isHost: boolean
   hostName?: string
+  players: { id: string, name: string, isHost: boolean }[]
+  currentPlayerId: string
+  roomId: string
 }
 
-export default function RoomHeader({ roomCode, roomName, isHost, hostName }: RoomHeaderProps) {
+export default function RoomHeader({ roomCode, roomName, isHost, hostName, players, currentPlayerId, roomId }: RoomHeaderProps) {
   const [copied, setCopied] = useState(false)
   const [shared, setShared] = useState(false)
   const { toast } = useToast()
   const [darkMode, setDarkMode] = useState(true)
   const logoRef = useRef<HTMLSpanElement>(null)
   const router = useRouter()
-  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(roomName || "")
   const [saving, setSaving] = useState(false)
@@ -31,6 +36,11 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
   const fallbackRoomName = hostName ? `${hostName}'s Room` : "Room"
   const [currentRoomName, setCurrentRoomName] = useState(roomName || fallbackRoomName)
   const { pusher, channel } = usePusherContext?.() || {}
+  const [selectedNewHost, setSelectedNewHost] = useState<string>("")
+  const [otherParticipants, setOtherParticipants] = useState<{id: string, name: string}[]>([])
+  const [leaveError, setLeaveError] = useState<string>("")
+  const [canShare, setCanShare] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
     if (logoRef.current) {
@@ -81,6 +91,46 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
     }
   }, [channel])
 
+  useEffect(() => {
+    // Use real participant list, excluding self
+    setOtherParticipants(players.filter(p => p.id !== currentPlayerId).map(p => ({ id: p.id, name: p.name })));
+  }, [players, currentPlayerId]);
+
+  useEffect(() => {
+    setCanShare(typeof window !== 'undefined' && !!navigator.share);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "?" && e.shiftKey) {
+        setShowShortcuts(true);
+      }
+      // Alt+C to copy room code (avoid if in input/textarea)
+      if (
+        (e.key === "c" || e.key === "C") &&
+        e.altKey &&
+        !(document.activeElement instanceof HTMLInputElement) &&
+        !(document.activeElement instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        copyRoomCode();
+      }
+      // Alt+A to open Add Story (for hosts only)
+      if (
+        (e.key === "a" || e.key === "A") &&
+        e.altKey &&
+        isHost &&
+        !(document.activeElement instanceof HTMLInputElement) &&
+        !(document.activeElement instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("open-add-story-dialog"));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isHost]);
+
   const copyRoomCode = async () => {
     const success = await copyToClipboard(roomCode)
     if (success) {
@@ -96,48 +146,28 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
   const shareRoom = () => {
     const roomUrl = window.location.href;
     const shareTitle = `EstiM8 Planning Poker Session`;
-    const shareText = `Join my EstiM8 planning poker session: ${roomName ? ` for "${roomName}"` : ''}`;
-    
+    const shareText = `Join my EstiM8 planning poker session: ${roomName ? ` for \"${roomName}\"` : ''}`;
     if (navigator.share) {
-      try {
-        navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: roomUrl,
-        });
+      navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: roomUrl,
+      }).then(() => {
         setShared(true);
         setTimeout(() => setShared(false), 2000);
-      } catch (error) {
+      }).catch((error) => {
         console.error('Error sharing:', error);
-        // Fallback to copying the URL
-        copyRoomUrl(roomUrl, shareText, shareTitle);
-      }
-    } else {
-      // Fallback for browsers without Web Share API
-      copyRoomUrl(roomUrl, shareText, shareTitle);
+      });
     }
   }
-  
-  const copyRoomUrl = async (url: string, shareText: string, shareTitle: string) => {
-    const textToShare = `${shareText}\n\n${url}`;
-    const success = await copyToClipboard(textToShare);
-    if (success) {
-      setShared(true);
-      toast({
-        title: "Room link copied",
-        description: "Share the invite with your team members",
-      });
-      setTimeout(() => setShared(false), 2000);
-    }
-  };
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    setShowLeaveDialog(true);
+    setShowLeaveModal(true);
   };
 
   const confirmLeave = () => {
-    setShowLeaveDialog(false);
+    setShowLeaveModal(false);
     router.push("/");
   };
 
@@ -153,6 +183,29 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
       setCurrentRoomName(roomName || "")
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleLeaveRoom() {
+    setLeaveError("")
+    const payload: any = { roomId, userId: currentPlayerId };
+    if (isHost && otherParticipants.length > 0) payload.newHostId = selectedNewHost;
+    console.log("[LEAVE ROOM PAYLOAD]", payload);
+    try {
+      const res = await fetch("/api/room/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setShowLeaveModal(false);
+        window.location.href = "/";
+      } else {
+        const data = await res.json();
+        setLeaveError(data.error || "Failed to leave room");
+      }
+    } catch {
+      setLeaveError("Failed to leave room");
     }
   }
 
@@ -223,56 +276,116 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
               <span className="tracking-widest font-mono text-sm md:text-base select-all">{roomCode}</span>
             </span>
             {/* Share Button (hidden on mobile) */}
-            <button
-              className="ml-2 p-2 rounded-full border border-accent/40 bg-gradient-to-tr from-pink-500/20 to-indigo-500/20 text-accent hover:bg-accent/20 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hidden sm:inline-flex"
-              onClick={shareRoom}
-              aria-label="Share room link"
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
-            {/* Copy and Keyboard buttons only on sm+ */}
-            <div className="relative hidden sm:inline-flex">
-              <button 
-                className={`btn-utility ${copied ? 'text-green-500 border-green-500' : ''} transition-all`}
-                style={{
-                  padding: '0.375rem 0.5rem',
-                  transform: copied ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.15s ease, color 0.2s ease, border-color 0.2s ease'
-                }} 
-                onClick={copyRoomCode}
-              >
-                <Copy className="h-4 w-4" />
-              </button>
-              {copied && (
-                <div 
-                  className="absolute left-1/2 -translate-x-1/2 -bottom-6 text-xs font-medium bg-background px-2 py-0.5 rounded-sm border border-border whitespace-nowrap z-10"
-                  style={{ 
-                    animation: 'fadeInOut 1.5s ease-in-out forwards'
-                  }}
+            <div className="flex gap-3 items-center ml-2">
+              {/* Copy Button (desktop/tablet only, or mobile if no Web Share API) */}
+              {(!canShare || typeof window === 'undefined') && (
+                <button
+                  className={`header-action-btn header-action-btn-accent hidden sm:inline-flex ${copied ? 'text-green-500 border-green-500' : ''}`}
+                  onClick={copyRoomCode}
+                  aria-label="Copy room code"
+                  type="button"
                 >
-                  Copied!
-                </div>
+                  <Copy className="w-6 h-6" />
+                </button>
               )}
-            </div>
-            <div className="hidden sm:inline-flex">
-              <KeyboardShortcuts isHost={isHost} />
+              {/* Share Button (only if Web Share API is available) */}
+              {canShare && (
+                <button
+                  className="header-action-btn header-action-btn-accent"
+                  onClick={shareRoom}
+                  aria-label="Share room link"
+                  type="button"
+                >
+                  <Share2 className="w-6 h-6" />
+                </button>
+              )}
+              {/* Keyboard Shortcuts Button */}
+              <button
+                className="header-action-btn header-action-btn-accent hidden sm:inline-flex"
+                aria-label="Keyboard Shortcuts"
+                type="button"
+                tabIndex={0}
+                onClick={() => setShowShortcuts(true)}
+              >
+                <Keyboard className="w-6 h-6" />
+              </button>
+              {/* Leave Room Button */}
+              <button
+                className="header-action-btn header-action-btn-destructive"
+                onClick={() => setShowLeaveModal(true)}
+                aria-label="Leave Room"
+                type="button"
+              >
+                <LogOut className="w-6 h-6" />
+              </button>
             </div>
           </div>
         </div>
       </header>
-      {/* Leave Room Confirmation Dialog */}
-      {showLeaveDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-background border border-border rounded-xl shadow-xl p-6 max-w-xs w-full flex flex-col items-center">
-            <div className="text-lg font-semibold mb-2 text-center">Leave Room?</div>
-            <div className="text-sm text-muted-foreground mb-4 text-center">Are you sure you want to leave the room? You will be redirected to the home screen.</div>
-            <div className="flex gap-3 w-full justify-center">
-              <button className="btn btn-secondary w-1/2" onClick={() => setShowLeaveDialog(false)}>Cancel</button>
-              <button className="btn btn-primary w-1/2" onClick={confirmLeave}>Leave</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Leave Room Modal */}
+      <Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal}>
+        <DialogContent className="max-w-md rounded-2xl border-2 border-accent shadow-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {isHost && otherParticipants.length > 0
+                ? "Transfer Host & Leave Room"
+                : isHost && otherParticipants.length === 0
+                ? "Delete Room?"
+                : "Leave Room?"}
+            </DialogTitle>
+          </DialogHeader>
+          {isHost && otherParticipants.length > 0 ? (
+            <>
+              <DialogDescription className="mb-4">Select a new host before leaving:</DialogDescription>
+              <select
+                className="w-full border rounded p-2 mb-4"
+                value={selectedNewHost}
+                onChange={e => setSelectedNewHost(e.target.value)}
+              >
+                <option value="">Select new host</option>
+                {otherParticipants.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {leaveError && <div className="text-red-500 text-sm mb-2">{leaveError}</div>}
+              <div className="flex gap-2 justify-end">
+                <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  disabled={!selectedNewHost}
+                  onClick={handleLeaveRoom}
+                >
+                  Transfer & Leave
+                </Button>
+              </div>
+            </>
+          ) : isHost && otherParticipants.length === 0 ? (
+            <>
+              <DialogDescription className="mb-4">You are the last participant. Leaving will delete the room. Continue?</DialogDescription>
+              {leaveError && <div className="text-red-500 text-sm mb-2">{leaveError}</div>}
+              <div className="flex gap-2 justify-end">
+                <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleLeaveRoom}>Delete & Leave</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogDescription className="mb-4">Are you sure you want to leave the room?</DialogDescription>
+              {leaveError && <div className="text-red-500 text-sm mb-2">{leaveError}</div>}
+              <div className="flex gap-2 justify-end">
+                <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleLeaveRoom}>Leave</Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      {/* Keyboard Shortcuts Modal */}
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="sm:max-w-md">
+          <KeyboardShortcutsContent isHost={isHost} />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

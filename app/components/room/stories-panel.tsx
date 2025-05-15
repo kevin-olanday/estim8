@@ -4,11 +4,11 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Trash2, Play, Clock, BookOpen, ChevronDown, ChevronRight, SkipForward } from "lucide-react"
+import { PlusCircle, Trash2, Play, Clock, BookOpen, ChevronDown, ChevronRight, SkipForward, Pencil } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { addStory, setActiveStory, deleteStory, completeStory, resetVotes, completeStoryWithScore } from "@/app/actions/story-actions"
+import { addStory, setActiveStory, deleteStory, completeStory, resetVotes, completeStoryWithScore, updateStory } from "@/app/actions/story-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -53,10 +53,21 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
   const [medianScore, setMedianScore] = useState<number | null>(null)
   const [overrideScore, setOverrideScore] = useState<number | null>(null)
   const [pendingStoryId, setPendingStoryId] = useState<string | null>(null)
+  const [editingStoryId, setEditingStoryId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editLoading, setEditLoading] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
   useEffect(() => {
     setLocalStories(stories)
   }, [stories])
+
+  useEffect(() => {
+    const handler = () => setIsAddingStory(true);
+    window.addEventListener("open-add-story-dialog", handler);
+    return () => window.removeEventListener("open-add-story-dialog", handler);
+  }, []);
 
   useEffect(() => {
     setLocalCompletedStories(completedStories)
@@ -243,6 +254,33 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
     }
   }, [showManualOverrideModal, medianScore, overrideScore])
 
+  const startEditStory = (story: Story) => {
+    setEditingStoryId(story.id)
+    setEditTitle(story.title)
+    setEditDescription(story.description || "")
+    setEditModalOpen(true)
+  }
+
+  const cancelEditStory = () => {
+    setEditingStoryId(null)
+    setEditTitle("")
+    setEditDescription("")
+    setEditModalOpen(false)
+  }
+
+  const saveEditStory = async (storyId: string) => {
+    setEditLoading(true)
+    try {
+      await updateStory(storyId, editTitle, editDescription)
+      setEditingStoryId(null)
+      setEditModalOpen(false)
+    } catch (e) {
+      // Optionally show error
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   completedStories.forEach(story => {
     console.log('[StoriesPanel] Rendering completed story:', story.title, 'finalScore:', story.finalScore, 'manualOverride:', story.manualOverride)
   })
@@ -313,7 +351,37 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
                 <span className="absolute inset-0 rounded-2xl overflow-hidden border border-transparent pointer-events-none" />
                 <div className="flex-1 min-w-0 flex items-center justify-between">
                   <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-semibold truncate max-w-[180px]" title={activeStory.title}>{activeStory.title}</span>
+                    {editingStoryId === activeStory.id ? (
+                      <>
+                        <Input
+                          value={editTitle}
+                          onChange={e => setEditTitle(e.target.value)}
+                          className="text-xs sm:text-sm font-semibold max-w-[180px] inline-block mr-2"
+                          autoFocus
+                        />
+                        <Button size="sm" className="ml-1 px-2 py-1" onClick={() => saveEditStory(activeStory.id)} disabled={editLoading}>
+                          Save
+                        </Button>
+                        <Button size="sm" variant="ghost" className="ml-1 px-2 py-1" onClick={cancelEditStory}>
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs sm:text-sm font-semibold truncate max-w-[180px]" title={activeStory.title}>{activeStory.title}</span>
+                        {isHost && (
+                          <button
+                            className="ml-1 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent"
+                            style={{ background: 'transparent', lineHeight: 0 }}
+                            onClick={() => startEditStory(activeStory)}
+                            title="Edit story"
+                            type="button"
+                          >
+                            <Pencil className="w-4 h-4 text-accent" />
+                          </button>
+                        )}
+                      </>
+                    )}
                     {activeStory.description && (
                       <p className="text-xs text-muted-foreground truncate max-w-[260px]" title={activeStory.description}>{activeStory.description}</p>
                     )}
@@ -332,14 +400,53 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
                 {pendingStories.map((story) => (
                   <div
                     key={story.id}
-                    className="section-card section-card-muted flex items-center gap-3 min-w-0 group"
+                    className="section-card section-card-muted flex items-center gap-3 min-w-0 group relative"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs sm:text-sm font-semibold truncate max-w-[180px]" title={story.title}>{story.title}</span>
+                        {editingStoryId === story.id ? (
+                          <>
+                            <Input
+                              value={editTitle}
+                              onChange={e => setEditTitle(e.target.value)}
+                              className="text-xs sm:text-sm font-semibold max-w-[180px] inline-block mr-2"
+                              autoFocus
+                            />
+                            <Button size="sm" className="ml-1 px-2 py-1" onClick={() => saveEditStory(story.id)} disabled={editLoading}>
+                              Save
+                            </Button>
+                            <Button size="sm" variant="ghost" className="ml-1 px-2 py-1" onClick={cancelEditStory}>
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs sm:text-sm font-semibold truncate max-w-[180px]" title={story.title}>{story.title}</span>
+                            {isHost && (
+                              <button
+                                className="ml-1 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent"
+                                style={{ background: 'transparent', lineHeight: 0 }}
+                                onClick={() => startEditStory(story)}
+                                title="Edit story"
+                                type="button"
+                              >
+                                <Pencil className="w-4 h-4 text-accent" />
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
-                      {story.description && (
-                        <p className="text-xs text-muted-foreground truncate max-w-[260px]" title={story.description}>{story.description}</p>
+                      {editingStoryId === story.id ? (
+                        <Textarea
+                          value={editDescription}
+                          onChange={e => setEditDescription(e.target.value)}
+                          className="text-xs mt-1"
+                          rows={2}
+                        />
+                      ) : (
+                        story.description && (
+                          <p className="text-xs text-muted-foreground truncate max-w-[260px]" title={story.description}>{story.description}</p>
+                        )
                       )}
                     </div>
                     {isHost && (
@@ -405,9 +512,22 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
                 <div className="text-muted-foreground text-sm px-2 py-2">No completed stories</div>
               ) : (
                 localCompletedStories.map((story) => (
-                  <div key={story.id} className="section-card section-card-muted50 flex flex-col gap-2 min-w-0 opacity-70 p-2 sm:p-3">
+                  <div key={story.id} className="section-card section-card-muted50 flex flex-col gap-2 min-w-0 opacity-70 p-2 sm:p-3 group relative">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
-                      <span className="text-sm font-semibold truncate max-w-[120px] sm:max-w-[180px]">{story.title}</span>
+                      <div className="flex items-center min-w-0">
+                        <span className="text-sm font-semibold truncate max-w-[120px] sm:max-w-[180px]">{story.title}</span>
+                        {isHost && (
+                          <button
+                            className="ml-1 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent"
+                            style={{ background: 'transparent', lineHeight: 0 }}
+                            onClick={() => startEditStory(story)}
+                            title="Edit story"
+                            type="button"
+                          >
+                            <Pencil className="w-4 h-4 text-accent" />
+                          </button>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-0">
                         <span className="btn-utility text-xs px-1.5 py-0.5 sm:px-2 sm:py-0.5">
                           Final Score: {story.finalScore ?? 'N/A'}
@@ -500,6 +620,40 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
               Cancel
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Story Modal */}
+      <Dialog open={editModalOpen} onOpenChange={open => { if (!open) cancelEditStory(); else setEditModalOpen(true); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              <span className="flex items-center gap-2"><Pencil className="w-5 h-5 text-accent" /> Edit Story</span>
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={e => { e.preventDefault(); if (editingStoryId) saveEditStory(editingStoryId); }} className="space-y-4">
+            <Input
+              placeholder="Story title"
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              required
+              autoFocus
+            />
+            <Textarea
+              placeholder="Description (optional)"
+              value={editDescription}
+              onChange={e => setEditDescription(e.target.value)}
+              rows={3}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="ghost" onClick={cancelEditStory}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editLoading}>
+                {editLoading ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </Card>

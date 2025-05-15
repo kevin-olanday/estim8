@@ -216,31 +216,32 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
       })
     }
 
-    const handlePlayerLeft = (member: any) => {
+    const handlePlayerLeft = (data: { playerId: string }) => {
+      setLocalPlayers((prev) => prev.filter((p) => p.id !== data.playerId));
+    };
+
+    const handleHostTransferred = (data: { newHostId: string, oldHostId: string }) => {
       setLocalPlayers((prev) =>
         prev.map((p) =>
-          p.id === member.id ? { ...p, isOnline: false } : p
+          p.id === data.newHostId
+            ? { ...p, isHost: true }
+            : p.id === data.oldHostId
+            ? { ...p, isHost: false }
+            : p
         )
-      )
-      toast({ description: `${member.info?.name || "A user"} left the room` })
-    }
+      );
+    };
 
-    const handleActiveStoryChanged = () => {
-      setLocalPlayers((prev) =>
-        prev.map((player) => ({
-          ...player,
-          vote: null,
-          hasVoted: false,
-        }))
-      )
-    }
-
-    channel.bind("active-story-changed", handleActiveStoryChanged)
+    channel.bind("active-story-changed", handlePlayerLeft)
     channel.bind("pusher:member_removed", handlePlayerLeft)
+    channel.bind("player-left", handlePlayerLeft)
+    channel.bind("host-transferred", handleHostTransferred)
 
     return () => {
-      channel.unbind("active-story-changed", handleActiveStoryChanged)
+      channel.unbind("active-story-changed", handlePlayerLeft)
       channel.unbind("pusher:member_removed", handlePlayerLeft)
+      channel.unbind("player-left", handlePlayerLeft)
+      channel.unbind("host-transferred", handleHostTransferred)
     }
   }, [channel, toast])
 

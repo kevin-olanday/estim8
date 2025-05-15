@@ -123,7 +123,7 @@ export default function Home() {
       <div className="w-full flex justify-center pt-6 pb-2 md:hidden">
         <img src="/images/placeholder-logo.png" alt="EstiM8 logo" className="h-12 sm:h-14 md:h-16 lg:h-20 mb-2 mx-auto filter invert block md:hidden" />
       </div>
-      <main className="flex-1 flex flex-col md:flex-row items-stretch justify-center max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-8 gap-4 md:gap-8">
+      <main className="flex-1 flex flex-col md:flex-row items-stretch justify-center max-w-5xl mx-auto px-2 sm:px-4 pt-4 sm:pt-8 gap-4 md:gap-8">
         {/* Left column */}
         <section className="hidden md:flex flex-1 flex-col justify-center items-center md:items-center text-center gap-6 md:gap-8 py-8 md:py-0 max-w-md mx-auto">
           <div className="w-full flex flex-col items-center">
@@ -133,31 +133,31 @@ export default function Home() {
             <div className="flex flex-col md:flex-row items-center justify-center w-full gap-6 md:gap-8 mt-4">
               {/* Illustration with glow/gradient burst */}
               <div className="relative flex-shrink-0">
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-56 h-32 md:w-60 md:h-36 bg-gradient-to-br from-indigo-400/30 via-purple-400/20 to-pink-400/10 rounded-full blur-2xl z-0" />
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-64 h-40 md:w-72 md:h-48 bg-gradient-to-br from-indigo-500/40 via-purple-500/30 to-pink-500/20 rounded-full blur-3xl z-0" />
                 <img src="/images/estim8-hero-visual.png" alt="Planning Poker illustration" className="relative z-10 mx-auto w-36 sm:w-44 md:w-52 rounded-xl  transition-transform duration-300 hover:-translate-y-2 " />
               </div>
               {/* Feature list to the right of the illustration */}
               <ul className="flex flex-col gap-3 md:gap-5 items-start justify-center md:min-w-[260px]">
                 <li className="flex items-center gap-2 md:gap-3">
-                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-green-500/20 text-green-400">
+                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500/20 text-blue-400">
                     <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4 md:w-5 md:h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
                   </span>
                   <span className="text-sm md:text-base lg:text-lg text-indigo-100">Real-time planning poker</span>
                 </li>
                 <li className="flex items-center gap-2 md:gap-3">
-                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-green-500/20 text-green-400">
+                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500/20 text-blue-400">
                     <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4 md:w-5 md:h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
                   </span>
                   <span className="text-sm md:text-base lg:text-lg text-indigo-100">Customizable cards</span>
                 </li>
                 <li className="flex items-center gap-2 md:gap-3">
-                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-green-500/20 text-green-400">
+                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500/20 text-blue-400">
                     <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4 md:w-5 md:h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
                   </span>
                   <span className="text-sm md:text-base lg:text-lg text-indigo-100">Live feedback</span>
                 </li>
                 <li className="flex items-center gap-2 md:gap-3">
-                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-green-500/20 text-green-400">
+                  <span className="inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500/20 text-blue-400">
                     <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4 md:w-5 md:h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' /></svg>
                   </span>
                   <span className="text-sm md:text-base lg:text-lg text-indigo-100">Absolutely 100% Free</span>
@@ -312,14 +312,9 @@ export default function Home() {
           </motion.div>
         </section>
       </main>
-      {/* Footer always at the bottom */}
-      <footer className="w-full text-center text-sm text-slate-400 py-4 mt-auto">
-        <p>
-          No registration required.{' '}
-          <Link href="/about" className="underline underline-offset-4 hover:text-primary">
-            Learn more
-          </Link>
-        </p>
+      <footer className="w-full text-center text-[10px] sm:text-xs text-slate-400 py-2 bg-[#232544] whitespace-nowrap">
+        Designed and developed with <span role="img" aria-label="love">❤️</span> by
+        <span className="inline-block align-middle ml-1 px-2 py-1 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400 text-white font-semibold text-[10px] sm:text-xs whitespace-nowrap">Kevin Olanday</span>
       </footer>
     </div>
   )

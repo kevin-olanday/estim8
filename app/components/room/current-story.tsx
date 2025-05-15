@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Edit, Save, FileText } from "lucide-react"
+import { Edit, Save, FileText, Play, Pause, Settings, RotateCcw, Clock } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { updateStory, completeStory } from "@/app/actions/story-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useCurrentStory } from "@/app/context/current-story-context"
@@ -16,21 +17,19 @@ interface CurrentStoryProps {
 }
 
 export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [title, setTitle] = useState(story?.title || "")
-  const [description, setDescription] = useState(story?.description || "")
-  const [isSaving, setIsSaving] = useState(false)
   const { currentStory, setCurrentStory } = useCurrentStory()
   const { channel } = usePusherContext()
   const [highlight, setHighlight] = useState(false)
+  const [showGlowSweep, setShowGlowSweep] = useState(false)
+  const [showDurationModal, setShowDurationModal] = useState(false)
+  const [pendingDuration, setPendingDuration] = useState(60)
 
   useEffect(() => {
     if (!channel) return
 
     const handleStoryUpdated = (data: any) => {
       if (data.id === story?.id) {
-        setTitle(data.title)
-        setDescription(data.description || "")
+        setCurrentStory(data);
       }
     }
     
@@ -49,15 +48,6 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
       channel.unbind("story-completed", handleStoryCompleted)
     }
   }, [channel, story, setCurrentStory])
-
-  // Update local state when story changes
-  useEffect(() => {
-    console.log('[CurrentStory] Story prop changed:', story);
-    if (story) {
-      setTitle(story.title)
-      setDescription(story.description || "")
-    }
-  }, [story])
 
   // Add styles for animated gradient border
   useEffect(() => {
@@ -124,92 +114,73 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
     )
   }
 
-  const handleSave = async () => {
-    if (!story || !isHost) return
-
-    setIsSaving(true)
-    try {
-      await updateStory(story.id, title, description || null)
-      setIsEditing(false)
-    } catch (error) {
-      console.error("Failed to update story:", error)
-    } finally {
-      setIsSaving(false)
+  // Add CSS for radial glow sweep animation
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'glow-sweep-style';
+    style.innerHTML = `
+      @keyframes radialGlowSweep {
+        0% {
+          opacity: 0;
+          transform: scale(0.85);
+        }
+        10% {
+          opacity: 0.35;
+          transform: scale(1);
+        }
+        60% {
+          opacity: 0.18;
+          transform: scale(1.25);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.7);
+        }
+      }
+      .glow-sweep {
+        pointer-events: none;
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: radial-gradient(circle at 50% 50%, #a5b4fc88 0%, #6366f144 40%, transparent 80%);
+        animation: radialGlowSweep 0.85s cubic-bezier(0.4,0,0.6,1);
+        opacity: 0;
+      }
+    `;
+    if (!document.getElementById('glow-sweep-style')) {
+      document.head.appendChild(style);
     }
-  }
-
-  const handleComplete = async () => {
-    if (!story || !isHost) return
-    try {
-      await completeStory(story.id)
-    } catch (error) {
-      console.error("Failed to complete story:", error)
-    }
-  }
+    return () => {
+      if (document.getElementById('glow-sweep-style')) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
 
   return (
-    <Card className={cn(
-      "section-card min-h-[140px] relative flex flex-col",
-      story && "animated-border",
-      highlight && "animate-[pulse_0.7s] ring-2 ring-indigo-400/60"
-    )}>
-      {/* Gradient border overlay for animation */}
-      <span className="absolute inset-0 rounded-2xl overflow-hidden border border-transparent pointer-events-none" />
-      <div className="panel-header justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-accent/80" />
-          <h2 className="panel-title">Current Story</h2>
-        </div>
-        <div className="flex gap-2 items-center">
-          {isHost && !isEditing && (
-            <button
-              className="gap-2 rounded-lg px-4 py-2 font-semibold border border-accent/60 bg-accent/10 hover:bg-accent/20 text-accent shadow-lg transition-all duration-150 flex items-center text-sm"
-              style={{ lineHeight: 1.2 }}
-              onClick={() => setIsEditing(true)}
-              type="button"
-            >
-              <Edit className="h-5 w-5 align-middle" />
-              <span className="align-middle">Edit</span>
-            </button>
-          )}
-          {isHost && isEditing && (
-            <button className="btn btn-primary text-sm font-semibold" onClick={handleSave} disabled={isSaving} type="button">
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="mb-3" />
-      <CardContent>
-        {isEditing ? (
-          <div className="space-y-4">
-            <div>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Story title"
-                className="font-medium text-lg"
-              />
-            </div>
-            <div>
-              <Textarea
-                value={description || ""}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Story description"
-                rows={4}
-              />
-            </div>
+    <>
+      {showGlowSweep && <div className="glow-sweep" />}
+      <Card className={cn(
+        "section-card min-h-[140px] relative flex flex-col",
+        story && "animated-border",
+        highlight && "animate-[pulse_0.7s] ring-2 ring-indigo-400/60"
+      )}>
+        <div className="panel-header justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-accent/80" />
+            <h2 className="panel-title">Current Story</h2>
           </div>
-        ) : (
+        </div>
+        <div className="mb-3" />
+        <CardContent>
           <div className="space-y-2 text-center">
             <h3 className="font-bold text-xl text-foreground leading-tight tracking-tight">{story.title}</h3>
             <p className="text-base text-muted-foreground whitespace-pre-line">
               {story.description || "No description provided."}
             </p>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   )
 }

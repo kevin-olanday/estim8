@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { NotificationProvider } from "@/app/context/notification-context"
 import "./styles/theme.css"
 import { Toaster } from "@/components/ui/toaster"
-
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
@@ -29,7 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={inter.className + " flex flex-col md:min-h-screen"}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <NotificationProvider>
-            <main className="flex-1 flex flex-col pb-32 md:pb-0">
+            <main className="flex-1 flex flex-col  md:pb-0">
               {children}
             </main>
             <footer id="app-footer" className="w-full border-t border-border bg-background py-4 flex justify-center items-center text-sm text-muted-foreground z-50 static md:fixed md:bottom-0">
@@ -38,15 +37,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   Designed and developed with
                   <span className="text-pink-400">❤️</span>
                   by
-                </span>
-                <a
+                  <a
                   href="https://KevinOlanday.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-1 md:mt-0 px-3 py-1 rounded-full font-bold text-sm bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow hover:brightness-110 transition border border-indigo-200 text-center"
+                  className="inline-block mt-1 md:mt-0  ml-2 px-3 py-1 rounded-full font-bold text-sm bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow hover:brightness-110 transition border border-indigo-200 text-center"
                 >
                   Kevin Olanday
                 </a>
+                </span>
+             
               </span>
             </footer>
             <Toaster />

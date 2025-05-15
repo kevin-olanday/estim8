@@ -124,3 +124,18 @@ body::before {
 .dice-spin {
   animation: diceSpin 0.5s cubic-bezier(.36,1.56,.64,1) 1;
 }
+
+.header-action-btn {
+  @apply w-12 h-12 flex items-center justify-center rounded-full border transition shadow-md text-base focus:ring-2;
+}
+.header-action-btn-accent {
+  @apply bg-accent border-accent text-accent focus:ring-accent;
+  background-color: hsl(var(--accent) / 0.10);
+  border-color: hsl(var(--accent) / 0.30);
+}
+.header-action-btn-accent:hover {
+  background-color: hsl(var(--accent) / 0.20);
+}
+.header-action-btn-destructive {
+  @apply bg-destructive text-white border-destructive hover:bg-destructive/90 focus:ring-destructive;
+}
