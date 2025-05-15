@@ -210,7 +210,7 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
                     letterSpacing: '0.01em',
                   }}
                 >
-                  Consensus 🎉
+                  Consensus
                 </span>
               )}
             </span>

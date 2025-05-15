@@ -161,94 +161,70 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
       {/* Neon/gradient bar for distinction */}
       <div className="w-full " />
       <header
-        className="w-full shadow-xl border-b border-border bg-background px-6 py-4 transition-all"
+        className="w-full shadow-xl border-b border-border bg-background px-6 py-2 md:py-4 transition-all"
         style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
       >
-        <div className="mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 w-full">
+        <div className="mx-auto flex flex-row items-center justify-between gap-2 w-full">
           {/* Left: Logo and Slogan stacked */}
-          <div className="flex flex-col items-start min-w-0 w-full sm:w-auto">
-            <div className="flex flex-row items-center gap-3 min-w-0">
-              <img
-                src="/images/placeholder-logo.png"
-                alt="EstiM8 logo"
-                className="h-12 md:h-12 mb-2 mx-auto filter invert cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent"
-                tabIndex={0}
-                onClick={handleLogoClick}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogoClick(e as any); }}
-                aria-label="Go to home screen"
-              />
-              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight ml-2 hidden lg:inline">
-                | Real-Time Planning Poker for Agile Teams
-              </span>
-            </div>
-          </div>
-          {/* Center: Room Name */}
-          {currentRoomName && (
-            <div className="hidden sm:flex flex-1 justify-center items-center mt-2 sm:mt-0">
-              <div
-                className="relative group flex items-center"
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
-              >
-                {editing ? (
-                  <form
-                    className="flex items-center gap-2"
-                    onSubmit={async e => {
-                      e.preventDefault()
-                      if (!editValue.trim()) return
-                      await updateRoomName(editValue.trim())
-                    }}
-                  >
-                    <input
-                      className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-accent"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      disabled={saving}
-                      style={{ minWidth: 120, maxWidth: 240 }}
-                      autoFocus
-                      maxLength={30}
-                    />
-                    <button type="submit" className="text-accent" disabled={saving} title="Save">
-                      <Check className="w-5 h-5" />
-                    </button>
-                    <button type="button" className="text-muted-foreground" onClick={() => { setEditing(false); setEditValue(currentRoomName) }} title="Cancel" disabled={saving}>
-                      <X className="w-5 h-5" />
-                    </button>
-                  </form>
-                ) : (
-                  <div className="flex flex-row items-center group/badge" style={{gap: 6}}>
-                    <span
-                      className="px-4 py-1 rounded-xl font-extrabold tracking-tight text-accent shadow-sm bg-accent/10 border border-accent/30 transition-colors text-base sm:text-2xl"
-                      style={{
-                        textShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                        letterSpacing: '0.01em',
-                        maxWidth: '90vw',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis',
-                        cursor: isHost ? 'pointer' : 'default',
-                      }}
-                      title={currentRoomName}
+          <div className="flex flex-row items-center gap-3 min-w-0">
+            <img
+              src="/images/placeholder-logo.png"
+              alt="EstiM8 logo"
+              className="h-8 md:h-12 mb-1 mx-auto filter invert cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent"
+              tabIndex={0}
+              onClick={handleLogoClick}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogoClick(e as any); }}
+              aria-label="Go to home screen"
+            />
+            <span className="mx-2 h-7 w-1 bg-white/60 rounded-full inline-block align-middle shadow"></span>
+            {currentRoomName && (
+              editing ? (
+                <form
+                  className="flex items-center gap-1"
+                  onSubmit={async e => {
+                    e.preventDefault();
+                    if (!editValue.trim()) return;
+                    await updateRoomName(editValue.trim());
+                  }}
+                >
+                  <input
+                    className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-base md:text-xl font-bold focus:outline-none focus:ring-2 focus:ring-accent truncate max-w-[30vw] md:max-w-xs"
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    disabled={saving}
+                    style={{ minWidth: 80, maxWidth: 240 }}
+                    autoFocus
+                    maxLength={30}
+                  />
+                  <button type="submit" className="text-accent" disabled={saving} title="Save">
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button type="button" className="text-muted-foreground" onClick={() => { setEditing(false); setEditValue(currentRoomName) }} title="Cancel" disabled={saving}>
+                    <X className="w-5 h-5" />
+                  </button>
+                </form>
+              ) : (
+                <span
+                  className="ml-1 font-bold text-base md:text-xl text-white tracking-tight truncate max-w-[30vw] md:max-w-xs flex items-center group drop-shadow"
+                  title={currentRoomName}
+                  style={{lineHeight: 1.1, cursor: isHost ? 'pointer' : 'default'}}
+                >
+                  {currentRoomName}
+                  {isHost && !editing && (
+                    <button
+                      type="button"
+                      className="ml-1 opacity-60 group-hover:opacity-100 transition-opacity p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                      style={{ background: 'transparent', lineHeight: 0 }}
+                      onClick={() => setEditing(true)}
+                      title="Edit room name"
                     >
-                      {currentRoomName}
-                    </span>
-                    {/* Edit icon: only for host, only when not editing */}
-                    {isHost && !editing && (
-                      <button
-                        type="button"
-                        className="ml-1 opacity-0 group-hover/badge:opacity-100 transition-opacity p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-                        style={{ background: 'transparent', lineHeight: 0 }}
-                        onClick={() => setEditing(true)}
-                        title="Edit room name"
-                      >
-                        <Pencil className="w-4 h-4 text-accent group-hover/badge:bg-accent/10 rounded-full p-0.5 transition-colors" />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+                      <Pencil className="w-4 h-4 text-accent group-hover:bg-accent/10 rounded-full p-0.5 transition-colors" />
+                    </button>
+                  )}
+                </span>
+              )
+            )}
+          </div>
           {/* Right: Controls */}
           <div className="flex flex-row items-center gap-2 flex-nowrap justify-center sm:justify-end mt-2 sm:mt-0">
             {roomCode && (

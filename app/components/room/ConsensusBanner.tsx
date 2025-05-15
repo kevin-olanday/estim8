@@ -80,11 +80,11 @@ export default function ConsensusBanner({ show, players = [], onComplete }: { sh
               animate={{ scale: 1.08, opacity: 1 }}
               exit={{ scale: 0.7, opacity: 0 }}
               transition={{ duration: 0.7, ease: "easeInOut" }}
-              className="w-screen h-48 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white font-extrabold text-3xl md:text-4xl shadow-2xl border-2 border-accent flex flex-col items-center justify-center"
-              style={{ boxShadow: "0 0 32px 0 #a5b4fc55", borderRadius: 0, padding: 0 }}
+              className="w-[95vw] max-w-lg h-32 rounded-xl px-2 sm:w-screen sm:max-w-none sm:h-48 sm:rounded-none sm:px-0 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white font-extrabold text-2xl sm:text-4xl shadow-2xl border-2 border-accent flex flex-col items-center justify-center"
+              style={{ boxShadow: "0 0 32px 0 #a5b4fc55" }}
             >
-              <span className="text-6xl md:text-7xl font-extrabold w-full text-center leading-tight">Consensus Achieved!</span>
-              <div className="flex flex-row items-center justify-center mt-8">
+              <span className="text-3xl sm:text-6xl font-extrabold w-full text-center leading-tight">Consensus Achieved!</span>
+              <div className="flex flex-row items-center justify-center mt-4 sm:mt-8">
                 {players.map((player, i) => {
                   const anim = avatarAnimations[avatarAnimIndexes[i] % avatarAnimations.length];
                   return (
@@ -93,14 +93,14 @@ export default function ConsensusBanner({ show, players = [], onComplete }: { sh
                       initial={anim.initial}
                       animate={anim.animate}
                       transition={anim.transition}
-                      style={{ marginLeft: i === 0 ? 0 : -12, marginRight: 0 }}
+                      style={{ marginLeft: i === 0 ? 0 : -8, marginRight: 0 }}
                     >
                       <PlayerAvatar
                         name={player.name}
                         avatarStyle={player.avatarStyle}
                         avatarSeed={player.avatarSeed}
-                        size="lg"
-                        className="w-16 h-16"
+                        size="md"
+                        className="w-10 h-10 sm:w-16 sm:h-16"
                       />
                     </motion.div>
                   );

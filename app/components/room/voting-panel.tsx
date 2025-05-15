@@ -91,6 +91,9 @@ export default function VotingPanel({
   const [pendingStoryId, setPendingStoryId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false);
 
+  // Ref to track the previous state of votesRevealed
+  const prevVotesRevealed = useRef(currentStory?.votesRevealed ?? false);
+
   useEffect(() => { setHydrated(true); }, []);
 
   // Reset selectedCard and hide statistics when the active story changes
@@ -402,29 +405,34 @@ export default function VotingPanel({
     }
   }
 
-  // Detect consensus when votes are revealed
+  // Detect consensus when votes are revealed and handle banner display
   useEffect(() => {
+    const currentVotesRevealed = currentStory?.votesRevealed ?? false;
+
     const voteCounts = votes.reduce((acc, vote) => {
       acc[vote.value] = (acc[vote.value] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    const allSame = Object.keys(voteCounts).length === 1 && votes.length > 1;
+    const hasConsensus = Object.keys(voteCounts).length === 1 && votes.length > 1;
 
-    if (currentStory?.votesRevealed && allSame && celebrationsEnabled) {
+    // Show banner only if votes just transitioned to revealed, and consensus exists, and celebrations are on
+    const justRevealed = currentVotesRevealed && !prevVotesRevealed.current;
+
+    if (justRevealed && hasConsensus && celebrationsEnabled) {
       setShowConsensusConfetti(true);
-      const timeout = setTimeout(() => setShowConsensusConfetti(false), 5000);
-      return () => clearTimeout(timeout);
-    } else {
+      const timer = setTimeout(() => {
+        setShowConsensusConfetti(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    } else if (!currentVotesRevealed || !hasConsensus || !celebrationsEnabled) {
+      // Ensure banner is hidden if conditions are not met (e.g., votes not revealed, no consensus, or celebrations off)
       setShowConsensusConfetti(false);
     }
-  }, [votes, currentStory?.votesRevealed, celebrationsEnabled]);
 
-  // Immediately hide consensus banner/confetti if celebrations are toggled off
-  useEffect(() => {
-    if (!celebrationsEnabled && showConsensusConfetti) {
-      setShowConsensusConfetti(false);
-    }
-  }, [celebrationsEnabled, showConsensusConfetti]);
+    // Update the ref to the current state for the next render cycle
+    prevVotesRevealed.current = currentVotesRevealed;
+
+  }, [votes, currentStory, celebrationsEnabled, setShowConsensusConfetti]);
 
   const handleCompleteStory = async () => {
     console.log('[VotingPanel] handleCompleteStory called', { currentStory, votes });
@@ -473,7 +481,7 @@ export default function VotingPanel({
     <>
       {/* Show fog/ambient background for all dark themes */}
       <DefaultThemeBackground active={gradientPresets.find(g => g.value === deckTheme)?.category === 'dark'} />
-      <div className="section-card space-y-2">
+      <div className="section-card space-y-2 w-full mx-auto sm:mx-0">
         {/* Consensus Achieved Animation */}
         {showConsensusConfetti && celebrationsEnabled && (
           <ConsensusBanner show={true} players={players} />
@@ -533,6 +541,9 @@ export default function VotingPanel({
             handleVote={handleVote}
             handleCardKeyDown={handleCardKeyDown}
             disabled={deckInteractionDisabled}
+            deckTheme={deckTheme}
+            gradientPresets={gradientPresets}
+            getContrastYIQ={getContrastYIQ}
           />
         </div>
 

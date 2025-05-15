@@ -40,6 +40,17 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   const [emojiPanelOpen, setEmojiPanelOpen] = useState(false)
   const [footerVisible, setFooterVisible] = useState(false)
   const footerRef = useRef<HTMLDivElement | null>(null)
+  const [showWelcomeBannerState, setShowWelcomeBannerState] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hasSeenWelcomeKey = `hasSeenWelcome_${roomData.id}`;
+      if (!sessionStorage.getItem(hasSeenWelcomeKey)) {
+        setShowWelcomeBannerState(true);
+        sessionStorage.setItem(hasSeenWelcomeKey, 'true');
+      }
+    }
+  }, [roomData.id]);
 
   const handleVoteRemoved = useCallback(
     (data: { playerId: string; storyId: string }) => {
@@ -383,24 +394,26 @@ function RoomClientInner({ roomData }: { roomData: any }) {
       </div>
       
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mx-auto px-0 sm:px-6 lg:px-8 py-6">
           <div 
             className="bg-surface rounded-3xl p-6 shadow-xl w-[95vw] sm:w-[85vw] md:w-[75vw] max-w-7xl mx-auto"
             style={{
               boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
             }}
           >
-            <WelcomeMessage
-              isHost={roomData.isHost}
-              roomCode={roomData.code}
-              name={currentPlayer?.name}
-              avatarStyle={currentPlayer?.avatarStyle}
-              avatarSeed={currentPlayer?.avatarSeed}
-            />
+            {showWelcomeBannerState && (
+              <WelcomeMessage
+                isHost={roomData.isHost}
+                roomCode={roomData.code}
+                name={currentPlayer?.name}
+                avatarStyle={currentPlayer?.avatarStyle}
+                avatarSeed={currentPlayer?.avatarSeed}
+              />
+            )}
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 mt-4 mb-4">
               {/* Left Column (2/3 width on large screens) */}
-              <section className="lg:col-span-2 space-y-6">
+              <section className="space-y-6">
                 <CurrentStory story={currentStory} isHost={roomData.isHost} />
                 <Separator />
                 <VotingPanel

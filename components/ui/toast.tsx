@@ -32,10 +32,19 @@ const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root>
 >(({ className, children, ...props }, ref) => {
+  // Helper to detect mobile
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
+  // Handler to close toast on tap (mobile only)
+  const handleTap = (e: React.MouseEvent) => {
+    if (isMobile && props.onOpenChange) {
+      props.onOpenChange(false);
+    }
+  };
   return (
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants(), className)}
+      onClick={handleTap}
       {...props}
     >
       <div className="flex items-center gap-4">
