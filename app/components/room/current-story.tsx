@@ -202,7 +202,7 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2 text-center">
             <h3 className="font-bold text-xl text-foreground leading-tight tracking-tight">{story.title}</h3>
             <p className="text-base text-muted-foreground whitespace-pre-line">
               {story.description || "No description provided."}

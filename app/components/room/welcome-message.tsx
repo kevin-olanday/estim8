@@ -42,19 +42,19 @@ export function WelcomeMessage({ isHost, roomCode, name = "", avatarStyle, avata
         <div className="py-2 text-base text-muted-foreground">
           Your real-time Planning Poker tool for agile teams.<br /><br />
           <b>{isHost ? "You are the host of this room." : "You have joined as a participant."}</b><br />
-          {isHost
+            {isHost
             ? "You can add stories, reveal votes, and control the timer."
             : "You can vote on stories and participate in discussions."}
         </div>
         <div className="space-y-2 mt-2">
-          <h3 className="text-sm font-medium">Quick Tips:</h3>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>Use the number keys (1-8) to quickly vote</li>
-            <li>Press Shift+? to see all keyboard shortcuts</li>
+            <h3 className="text-sm font-medium">Quick Tips:</h3>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              <li>Use the number keys (1-8) to quickly vote</li>
+              <li>Press Shift+? to see all keyboard shortcuts</li>
             <li>Share the room code <b>{roomCode}</b> with your team</li>
-            {isHost && <li>Only you can reveal votes and move to the next story</li>}
-          </ul>
-        </div>
+              {isHost && <li>Only you can reveal votes and move to the next story</li>}
+            </ul>
+          </div>
         <div className="space-y-3 mt-4">
           <button
             className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold text-base bg-accent text-white shadow transition hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"

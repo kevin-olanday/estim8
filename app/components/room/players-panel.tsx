@@ -448,7 +448,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                       </form>
                     ) : (
                       <>
-                        <span className="text-sm font-semibold truncate">
+                        <span className="text-xs sm:text-sm font-semibold truncate">
                           {player.name}
                         </span>
                         {/* Edit icon for current user */}
@@ -467,10 +467,10 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                           </button>
                         )}
                         {isCurrent && (
-                          <span className="ml-1 px-1.5 py-0 rounded-full bg-accent/20 text-accent text-[10px] font-semibold normal-case flex-shrink-0">You</span>
+                          <span className="ml-1 px-1 py-0 rounded-full bg-accent/20 text-accent text-[9px] sm:text-[10px] font-semibold normal-case flex-shrink-0">You</span>
                         )}
                         {isHost && (
-                          <span className="ml-1 px-1.5 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
+                          <span className="ml-1 px-1 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[9px] sm:text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
                         )}
                       </>
                     )}

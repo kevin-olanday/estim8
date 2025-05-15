@@ -253,7 +253,7 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
       <div className="panel-header flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-accent/80" />
-          <h2 className="panel-title">Stories</h2>
+          <h2 className="panel-title text-xs sm:text-sm md:text-lg">Stories</h2>
           <span className="text-xs text-muted-foreground/70">({pendingStories.length + completedStories.length})</span>
         </div>
         {isHost && (
@@ -305,7 +305,7 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Clock className="h-5 w-5 text-blue-400" />
-              <h3 className="text-base font-semibold text-muted-foreground">Queue <span className="text-xs font-normal">({pendingStories.length + (activeStory ? 1 : 0)})</span></h3>
+              <h3 className="text-xs sm:text-base font-semibold text-muted-foreground">Queue <span className="text-[10px] sm:text-xs font-normal">({pendingStories.length + (activeStory ? 1 : 0)})</span></h3>
             </div>
             {/* Show current story at the top with LIVE tag */}
             {activeStory && !activeStory.completed && (
@@ -313,13 +313,13 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
                 <span className="absolute inset-0 rounded-2xl overflow-hidden border border-transparent pointer-events-none" />
                 <div className="flex-1 min-w-0 flex items-center justify-between">
                   <div className="min-w-0">
-                    <span className="text-sm font-semibold truncate max-w-[180px]" title={activeStory.title}>{activeStory.title}</span>
+                    <span className="text-xs sm:text-sm font-semibold truncate max-w-[180px]" title={activeStory.title}>{activeStory.title}</span>
                     {activeStory.description && (
                       <p className="text-xs text-muted-foreground truncate max-w-[260px]" title={activeStory.description}>{activeStory.description}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="ml-4 px-2 py-0.5 rounded-full bg-accent text-white text-xs font-bold tracking-wider flex-shrink-0">Active</span>
+                    <span className="ml-4 px-2 py-0.5 rounded-full bg-accent text-white text-[10px] sm:text-xs font-bold tracking-wider flex-shrink-0">Active</span>
                   </div>
                 </div>
               </div>
@@ -336,7 +336,7 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-semibold truncate max-w-[180px]" title={story.title}>{story.title}</span>
+                        <span className="text-xs sm:text-sm font-semibold truncate max-w-[180px]" title={story.title}>{story.title}</span>
                       </div>
                       {story.description && (
                         <p className="text-xs text-muted-foreground truncate max-w-[260px]" title={story.description}>{story.description}</p>
@@ -398,7 +398,7 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
               type="button"
             >
               {completedOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-              <span className="text-base font-semibold">Completed <span className="text-xs font-normal">({completedStories.length})</span></span>
+              <span className="text-xs sm:text-base font-semibold">Completed <span className="text-[10px] sm:text-xs font-normal">({completedStories.length})</span></span>
             </button>
             <div id="completed-stories-list" className={completedOpen ? "space-y-1" : "hidden"}>
               {localCompletedStories.length === 0 ? (

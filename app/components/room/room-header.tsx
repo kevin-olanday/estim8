@@ -188,38 +188,28 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
                   }}
                 >
                   <input
-                    className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-base md:text-xl font-bold focus:outline-none focus:ring-2 focus:ring-accent truncate max-w-[30vw] md:max-w-xs"
+                    className="font-bold text-sm md:text-xl text-white tracking-tight truncate max-w-[30vw] md:max-w-xs bg-transparent border-b border-accent/40 focus:outline-none focus:border-accent px-1"
                     value={editValue}
                     onChange={e => setEditValue(e.target.value)}
-                    disabled={saving}
-                    style={{ minWidth: 80, maxWidth: 240 }}
+                    onBlur={async e => {
+                      e.preventDefault();
+                      if (!editValue.trim()) return;
+                      await updateRoomName(editValue.trim());
+                    }}
                     autoFocus
-                    maxLength={30}
+                    maxLength={40}
                   />
-                  <button type="submit" className="text-accent" disabled={saving} title="Save">
-                    <Check className="w-5 h-5" />
-                  </button>
-                  <button type="button" className="text-muted-foreground" onClick={() => { setEditing(false); setEditValue(currentRoomName) }} title="Cancel" disabled={saving}>
-                    <X className="w-5 h-5" />
-                  </button>
                 </form>
               ) : (
                 <span
-                  className="ml-1 font-bold text-base md:text-xl text-white tracking-tight truncate max-w-[30vw] md:max-w-xs flex items-center group drop-shadow"
+                  className="ml-1 font-bold text-sm md:text-xl text-white tracking-tight truncate max-w-[30vw] md:max-w-xs flex items-center group drop-shadow"
                   title={currentRoomName}
                   style={{lineHeight: 1.1, cursor: isHost ? 'pointer' : 'default'}}
+                  onClick={isHost ? () => setEditing(true) : undefined}
                 >
                   {currentRoomName}
-                  {isHost && !editing && (
-                    <button
-                      type="button"
-                      className="ml-1 opacity-60 group-hover:opacity-100 transition-opacity p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-                      style={{ background: 'transparent', lineHeight: 0 }}
-                      onClick={() => setEditing(true)}
-                      title="Edit room name"
-                    >
-                      <Pencil className="w-4 h-4 text-accent group-hover:bg-accent/10 rounded-full p-0.5 transition-colors" />
-                    </button>
+                  {isHost && (
+                    <Pencil className="ml-1 w-4 h-4 text-accent/80 opacity-80 group-hover:opacity-100 transition-opacity duration-150" />
                   )}
                 </span>
               )
@@ -227,40 +217,19 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
           </div>
           {/* Right: Controls */}
           <div className="flex flex-row items-center gap-2 flex-nowrap justify-center sm:justify-end mt-2 sm:mt-0">
-            {roomCode && (
-              <span
-                className="min-w-0 font-mono text-sm font-semibold select-all px-2 py-1 rounded-full bg-[linear-gradient(90deg,_#4654F0_0%,_#C25278_100%)] text-white shadow-sm flex items-center gap-1 cursor-pointer"
-                onClick={copyRoomCode}
-                title="Tap to copy Room ID"
-              >
-                <span className="text-white/70 text-xs font-normal">Room ID :</span>
-                <span>{roomCode}</span>
-              </span>
-            )}
-            {/* Share button always visible */}
-            <div className="relative flex-shrink-0 min-w-0">
-              <button 
-                className={`btn-utility ${shared ? 'text-blue-500 border-blue-500' : ''} transition-all`}
-                style={{
-                  padding: '0.375rem 0.5rem',
-                  transform: shared ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.15s ease, color 0.2s ease, border-color 0.2s ease'
-                }} 
-                onClick={shareRoom}
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-              {shared && (
-                <div 
-                  className="absolute left-1/2 -translate-x-1/2 -bottom-6 text-xs font-medium bg-background px-2 py-0.5 rounded-sm border border-border whitespace-nowrap z-10"
-                  style={{ 
-                    animation: 'fadeInOut 1.5s ease-in-out forwards'
-                  }}
-                >
-                  {typeof navigator.share === 'function' ? 'Shared!' : 'Link copied!'}
-                </div>
-              )}
-            </div>
+            {/* Room Code Badge (no label, smaller font on mobile) */}
+            <span className="ml-2 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold text-base md:text-sm flex items-center gap-2 shadow-lg">
+              <span className="hidden sm:inline">Room ID:&nbsp;</span>
+              <span className="tracking-widest font-mono text-sm md:text-base select-all">{roomCode}</span>
+            </span>
+            {/* Share Button (hidden on mobile) */}
+            <button
+              className="ml-2 p-2 rounded-full border border-accent/40 bg-gradient-to-tr from-pink-500/20 to-indigo-500/20 text-accent hover:bg-accent/20 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hidden sm:inline-flex"
+              onClick={shareRoom}
+              aria-label="Share room link"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
             {/* Copy and Keyboard buttons only on sm+ */}
             <div className="relative hidden sm:inline-flex">
               <button 
