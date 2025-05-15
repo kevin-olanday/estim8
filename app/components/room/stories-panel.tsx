@@ -66,48 +66,23 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
     if (!channel) return
 
     const handleStoryAdded = (data: any) => {
+      // No local mutation; backend will send updated stories via props
       setLocalStories((prev) => [
         ...prev,
         {
           id: data.id,
           title: data.title,
           description: data.description,
-          active: false,
+          active: false, // New stories are not active by default
           completed: false,
-          votesRevealed: false,
+          votesRevealed: false, // New stories don't have revealed votes
+          // votes: [], // Assuming votes will be handled by active-story-changed or votes-revealed
         },
-      ])
+      ]);
     }
 
     const handleStoryCompleted = (data: any) => {
-      setLocalStories((prev) =>
-        prev.map((story) =>
-          story.id === data.id
-            ? { 
-                ...story, 
-                completed: true, 
-                active: false,
-                finalScore: data.finalScore,
-                manualOverride: data.manualOverride
-              }
-            : story
-        )
-      )
-      setLocalCompletedStories((prev) => {
-        const storyToComplete = localStories.find(s => s.id === data.id)
-        if (!storyToComplete) return prev
-
-        const completedStory = {
-          ...storyToComplete,
-          completed: true,
-          active: false,
-          finalScore: data.finalScore,
-          manualOverride: data.manualOverride,
-          votes: data.votes || []
-        }
-
-        return [completedStory, ...prev]
-      })
+      // No local mutation; backend will send updated stories via props
       setCurrentStory(null)
     }
 
@@ -118,7 +93,7 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
       channel.unbind("story-added", handleStoryAdded)
       channel.unbind("story-completed", handleStoryCompleted)
     }
-  }, [channel, setCurrentStory, localStories])
+  }, [channel, setCurrentStory])
 
   useEffect(() => {
     if (!channel) return
@@ -430,20 +405,20 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
                 <div className="text-muted-foreground text-sm px-2 py-2">No completed stories</div>
               ) : (
                 localCompletedStories.map((story) => (
-                  <div key={story.id} className="section-card section-card-muted50 flex flex-col gap-2 min-w-0 opacity-70 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold truncate max-w-[180px]">{story.title}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="btn-utility text-xs px-2 py-0.5">
+                  <div key={story.id} className="section-card section-card-muted50 flex flex-col gap-2 min-w-0 opacity-70 p-2 sm:p-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-sm font-semibold truncate max-w-[120px] sm:max-w-[180px]">{story.title}</span>
+                      <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-0">
+                        <span className="btn-utility text-xs px-1.5 py-0.5 sm:px-2 sm:py-0.5">
                           Final Score: {story.finalScore ?? 'N/A'}
                         </span>
                         {story.manualOverride && (
-                          <span className="btn-utility text-xs px-2 py-0.5 bg-yellow-500 text-white">Manual</span>
+                          <span className="btn-utility text-xs px-1.5 py-0.5 sm:px-2 sm:py-0.5 bg-yellow-500 text-white">Manual</span>
                         )}
                       </div>
                     </div>
                     {story.description && (
-                      <p className="text-xs text-muted-foreground truncate max-w-[220px]">{story.description}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-[220px]">{story.description}</p>
                     )}
                   </div>
                 ))
@@ -467,21 +442,21 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
           </div>
           <div className="space-y-3 mt-2">
             <button
-              className="w-full btn btn-primary flex items-center justify-center gap-2 py-2 rounded-lg"
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold text-base bg-accent text-white shadow transition hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent"
               onClick={() => handleIncompleteModalAction('complete')}
               type="button"
             >
-              <SkipForward className="h-4 w-4" /> Complete and Move On
+              <SkipForward className="h-5 w-5" /> Complete and Move On
             </button>
             <button
-              className="w-full btn btn-destructive flex items-center justify-center gap-2 py-2 rounded-lg"
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold text-base bg-destructive text-white shadow transition hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive"
               onClick={() => handleIncompleteModalAction('discard')}
               type="button"
             >
-              <Trash2 className="h-4 w-4" /> Discard Votes
+              <Trash2 className="h-5 w-5" /> Discard Votes
             </button>
             <button
-              className="w-full btn btn-secondary flex items-center justify-center gap-2 py-2 rounded-lg"
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold text-base bg-muted text-foreground shadow transition hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-muted"
               onClick={() => handleIncompleteModalAction('cancel')}
               type="button"
             >

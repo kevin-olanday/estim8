@@ -51,6 +51,7 @@ interface VotingPanelProps {
     currentUserId?: string
   }
   storyId?: string
+  celebrationsEnabled: boolean
 }
 
 interface GradientPreset {
@@ -68,6 +69,7 @@ export default function VotingPanel({
   votes = [],
   players = [],
   roomData,
+  celebrationsEnabled,
 }: VotingPanelProps) {
   const { currentStory, setCurrentStory } = useCurrentStory()
   const storyId = currentStory?.id
@@ -87,6 +89,9 @@ export default function VotingPanel({
   const [medianScore, setMedianScore] = useState<number | null>(null)
   const [overrideScore, setOverrideScore] = useState<number | null>(null)
   const [pendingStoryId, setPendingStoryId] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => { setHydrated(true); }, []);
 
   // Reset selectedCard and hide statistics when the active story changes
   useEffect(() => {
@@ -399,20 +404,27 @@ export default function VotingPanel({
 
   // Detect consensus when votes are revealed
   useEffect(() => {
-    // Only trigger when votes are revealed and there is consensus
     const voteCounts = votes.reduce((acc, vote) => {
       acc[vote.value] = (acc[vote.value] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     const allSame = Object.keys(voteCounts).length === 1 && votes.length > 1;
-    if (currentStory?.votesRevealed && allSame) {
+
+    if (currentStory?.votesRevealed && allSame && celebrationsEnabled) {
       setShowConsensusConfetti(true);
-      const timeout = setTimeout(() => setShowConsensusConfetti(false), 3000);
+      const timeout = setTimeout(() => setShowConsensusConfetti(false), 5000);
       return () => clearTimeout(timeout);
     } else {
       setShowConsensusConfetti(false);
     }
-  }, [votes, currentStory?.votesRevealed]);
+  }, [votes, currentStory?.votesRevealed, celebrationsEnabled]);
+
+  // Immediately hide consensus banner/confetti if celebrations are toggled off
+  useEffect(() => {
+    if (!celebrationsEnabled && showConsensusConfetti) {
+      setShowConsensusConfetti(false);
+    }
+  }, [celebrationsEnabled, showConsensusConfetti]);
 
   const handleCompleteStory = async () => {
     console.log('[VotingPanel] handleCompleteStory called', { currentStory, votes });
@@ -463,11 +475,8 @@ export default function VotingPanel({
       <DefaultThemeBackground active={gradientPresets.find(g => g.value === deckTheme)?.category === 'dark'} />
       <div className="section-card space-y-2">
         {/* Consensus Achieved Animation */}
-        {showConsensusConfetti && (
-          <>
-            <ConsensusBanner show={showConsensusConfetti} />
-            <Confetti key="consensus" />
-          </>
+        {showConsensusConfetti && celebrationsEnabled && (
+          <ConsensusBanner show={true} players={players} />
         )}
         <div className="panel-header justify-between">
           <div className="flex items-center gap-2">
@@ -528,7 +537,7 @@ export default function VotingPanel({
         </div>
 
         {/* --- Vote Reveal Section --- */}
-        {currentStory?.votesRevealed && (
+        {hydrated && currentStory?.votesRevealed && (
           <VoteStatistics
             votes={votes}
             deck={deck}

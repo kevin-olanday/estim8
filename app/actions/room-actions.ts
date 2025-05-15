@@ -260,7 +260,7 @@ export async function getRoomData(roomCode: string) {
           title: activeStory.title,
           description: activeStory.description || null,
           votesRevealed: activeStory.votesRevealed,
-          status: activeStory.status, // <-- add this line!
+          status: activeStory.status,
         }
       : null,
     currentVotes,
@@ -278,6 +278,7 @@ export async function getRoomData(roomCode: string) {
       })),
     completedStories: completedStoriesData,
     currentUserId: playerId,
+    celebrationsEnabled: room.celebrationsEnabled,
   }
 }
 
@@ -439,6 +440,29 @@ export async function updateRoomName(newName: string) {
   revalidatePath(`/room/[roomId]`)
 
   return { success: true, name: updatedRoom.name }
+}
+
+export async function updateCelebrationsEnabled(celebrationsEnabled: boolean) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const playerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !playerId) throw new Error("Not authenticated")
+
+  // Check if player is host
+  const player = await prisma.player.findUnique({ where: { id: playerId, roomId } })
+  if (!player?.isHost) throw new Error("Only the host can update room settings")
+
+  await prisma.room.update({
+    where: { id: roomId },
+    data: { celebrationsEnabled },
+  })
+
+  // Broadcast to all clients
+  await pusherServer.trigger(`presence-room-${roomId}`, "celebrations-enabled-updated", { celebrationsEnabled })
+
+  revalidatePath(`/room/[roomId]`)
+  return { success: true }
 }
 
 // Helper functions

@@ -150,22 +150,23 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className="flex items-center justify-center gap-2 px-3 py-1.5 rounded-md font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent/40 shadow-lg"
+                      className="flex items-center justify-center gap-3 px-5 py-2 rounded-lg font-bold text-base transition-all focus:outline-none focus:ring-2 focus:ring-accent/40 shadow-xl animate-pulse-complete-story relative overflow-hidden group"
                       style={{
-                        background: deckTheme || 'linear-gradient(90deg, #6366f1, #9333ea)',
+                        background: 'linear-gradient(90deg, #6366f1 0%, #9333ea 100%)',
                         color: '#fff',
-                        boxShadow: '0 2px 16px 0 rgba(99,102,241,0.10) inset',
+                        boxShadow: '0 2px 16px 0 rgba(99,102,241,0.20) inset, 0 0 16px 2px rgba(99,102,241,0.15)',
+                        border: '2px solid #a5b4fc',
                       }}
-                      onMouseOver={e => e.currentTarget.style.boxShadow = '0 0 10px 2px rgba(99,102,241,0.25), 0 2px 16px 0 rgba(99,102,241,0.10) inset'}
-                      onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 16px 0 rgba(99,102,241,0.10) inset'}
-                      onFocus={e => e.currentTarget.style.boxShadow = '0 0 10px 2px rgba(99,102,241,0.25), 0 2px 16px 0 rgba(99,102,241,0.10) inset'}
-                      onBlur={e => e.currentTarget.style.boxShadow = '0 2px 16px 0 rgba(99,102,241,0.10) inset'}
+                      onMouseOver={e => e.currentTarget.style.boxShadow = '0 0 16px 4px #a5b4fc, 0 2px 16px 0 rgba(99,102,241,0.20) inset'}
+                      onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 16px 0 rgba(99,102,241,0.20) inset, 0 0 16px 2px rgba(99,102,241,0.15)'}
+                      onFocus={e => e.currentTarget.style.boxShadow = '0 0 16px 4px #a5b4fc, 0 2px 16px 0 rgba(99,102,241,0.20) inset'}
+                      onBlur={e => e.currentTarget.style.boxShadow = '0 2px 16px 0 rgba(99,102,241,0.20) inset, 0 0 16px 2px rgba(99,102,241,0.15)'}
                       onClick={onComplete}
                       type="button"
                       disabled={completeDisabled || votes.length === 0}
                       title="Complete Story"
                     >
-                      <SkipForward className="h-5 w-5 sm:mr-2 -ml-1 align-middle" />
+                      <SkipForward className="h-6 w-6 sm:mr-2 -ml-1 align-middle animate-bounce-arrow" />
                       <span className="hidden sm:inline align-middle">Complete Story</span>
                     </button>
                   </TooltipTrigger>
@@ -201,7 +202,17 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
             <div className="text-xs text-muted-foreground mb-1">Most Common</div>
             <span className="inline-flex items-center gap-1 font-bold text-accent">
               {mostCommonVote}
-              {allSame && <span className="ml-1 animate-bounce">🎉</span>}
+              {allSame && (
+                <span
+                  className="ml-2 px-2 py-0.5 rounded-full text-white text-xs font-semibold shadow animate-bounce"
+                  style={{
+                    background: 'linear-gradient(90deg, #6366f1 0%, #9333ea 100%)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  Consensus 🎉
+                </span>
+              )}
             </span>
           </div>
           <div>
@@ -299,3 +310,20 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
     </TooltipProvider>
   )
 }
+
+<style jsx global>{`
+@keyframes pulse-complete-story {
+  0%, 100% { box-shadow: 0 0 16px 2px #a5b4fc, 0 2px 16px 0 rgba(99,102,241,0.20) inset; }
+  50% { box-shadow: 0 0 32px 8px #a5b4fc, 0 2px 24px 0 rgba(99,102,241,0.30) inset; }
+}
+.animate-pulse-complete-story {
+  animation: pulse-complete-story 1.5s infinite;
+}
+@keyframes bounce-arrow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-bounce-arrow {
+  animation: bounce-arrow 1.1s infinite;
+}
+`}</style>

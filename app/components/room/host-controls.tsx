@@ -10,13 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Eye, RotateCcw, Plus, Trash2, Settings } from "lucide-react"
 import { addStory, completeStory } from "@/app/actions/story-actions"
 import { revealVotes, resetVotes } from "@/app/actions/story-actions"
-import { updateDeck } from "@/app/actions/room-actions"
+import { updateDeck, updateCelebrationsEnabled } from "@/app/actions/room-actions"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DEFAULT_DECKS, DeckType } from "@/types/card"
 import type { Card as CardType, Deck } from "@/types/card"
 import { DeckCard } from "@/app/components/room/card"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { Switch } from "@/components/ui/switch"
 
 interface HostControlsProps {
   currentStoryId: string | null
@@ -26,6 +27,8 @@ interface HostControlsProps {
   storyStatus?: "idle" | "active" | "completed"
   currentDeckType: DeckType
   currentDeck: Deck
+  celebrationsEnabled: boolean
+  setCelebrationsEnabled: (enabled: boolean) => void
 }
 
 export default function HostControls({
@@ -36,6 +39,8 @@ export default function HostControls({
   storyStatus = "idle",
   currentDeckType,
   currentDeck,
+  celebrationsEnabled,
+  setCelebrationsEnabled,
 }: HostControlsProps) {
   const [isAddingStory, setIsAddingStory] = useState(false)
   const [storyTitle, setStoryTitle] = useState("")
@@ -138,6 +143,18 @@ export default function HostControls({
     }
   }
 
+  const handleCelebrationToggle = async (checked: boolean) => {
+    setCelebrationsEnabled(checked); // Optimistic update
+    try {
+      await updateCelebrationsEnabled(checked);
+    } catch (error) {
+      // Optionally revert on error
+      setCelebrationsEnabled(!checked);
+      // Optionally show a toast
+      console.error("Failed to update celebration toggle:", error);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -177,6 +194,18 @@ export default function HostControls({
             Manage Session
           </div>
           <div className="panel-divider" />
+          <div className="flex items-center justify-between py-2">
+            <div className="flex flex-col">
+              <span className="font-medium text-sm text-foreground">Celebration Animations</span>
+              <span className="text-xs text-muted-foreground">Show confetti and animated avatars when consensus is reached</span>
+            </div>
+            <Switch
+              checked={celebrationsEnabled}
+              onCheckedChange={handleCelebrationToggle}
+              id="celebration-animations-toggle"
+              className="ml-4"
+            />
+          </div>
           <div className="space-y-2">
             <TooltipProvider>
               <Tooltip>
@@ -260,6 +289,7 @@ export default function HostControls({
                     <SelectItem value={DeckType.TSHIRT}>T-Shirt Sizes</SelectItem>
                     <SelectItem value={DeckType.POWERS_OF_TWO}>Powers of Two</SelectItem>
                     <SelectItem value={DeckType.SEQUENTIAL}>Sequential</SelectItem>
+                    <SelectItem value={DeckType.SIMPLE_1_5}>Simple 1-5</SelectItem>
                     <SelectItem value={DeckType.RISK}>Risk Assessment</SelectItem>
                     <SelectItem value={DeckType.CUSTOM}>Custom</SelectItem>
                   </SelectContent>

@@ -12,6 +12,7 @@ export enum DeckType {
   SEQUENTIAL = "SEQUENTIAL",
   RISK = "RISK",
   CUSTOM = "CUSTOM",
+  SIMPLE_1_5 = "SIMPLE_1_5",
 }
 
 export const DEFAULT_DECKS: Record<DeckType, Deck> = {
@@ -84,6 +85,14 @@ export const DEFAULT_DECKS: Record<DeckType, Deck> = {
     { label: "5" },
     { label: "8" },
     { label: "13" },
+    { label: "?" },
+  ],
+  [DeckType.SIMPLE_1_5]: [
+    { label: "1" },
+    { label: "2" },
+    { label: "3" },
+    { label: "4" },
+    { label: "5" },
     { label: "?" },
   ],
 }

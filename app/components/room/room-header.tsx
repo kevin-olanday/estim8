@@ -177,7 +177,7 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleLogoClick(e as any); }}
                 aria-label="Go to home screen"
               />
-              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight ml-2 hidden sm:inline">
+              <span className="text-xs md:text-sm text-muted-foreground tracking-wide leading-tight ml-2 hidden lg:inline">
                 | Real-Time Planning Poker for Agile Teams
               </span>
             </div>
@@ -206,6 +206,7 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName }: Roo
                       disabled={saving}
                       style={{ minWidth: 120, maxWidth: 240 }}
                       autoFocus
+                      maxLength={30}
                     />
                     <button type="submit" className="text-accent" disabled={saving} title="Save">
                       <Check className="w-5 h-5" />

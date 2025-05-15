@@ -1,8 +1,55 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { PlayerAvatar } from "./player-avatar";
+import { Confetti } from "../ui/confetti";
 
-export default function ConsensusBanner({ show, onComplete }: { show: boolean; onComplete?: () => void }) {
+const avatarAnimations = [
+  {
+    key: 'jump',
+    initial: { y: 0 },
+    animate: { y: [-10, -32, 0, -16, 0] },
+    transition: { duration: 1.2, times: [0, 0.3, 0.6, 0.8, 1], repeat: Infinity, repeatDelay: 0.5, ease: "easeInOut" },
+  },
+  {
+    key: 'spin',
+    initial: { rotate: 0 },
+    animate: { rotate: [0, 360, 0] },
+    transition: { duration: 1.4, times: [0, 0.5, 1], repeat: Infinity, repeatDelay: 0.7, ease: "linear" },
+  },
+  {
+    key: 'wobble',
+    initial: { rotate: 0 },
+    animate: { rotate: [0, 10, -10, 10, 0] },
+    transition: { duration: 1.1, times: [0, 0.2, 0.5, 0.8, 1], repeat: Infinity, repeatDelay: 0.5, ease: "easeInOut" },
+  },
+  {
+    key: 'double-jump',
+    initial: { y: 0 },
+    animate: { y: [-10, -32, 0, -24, 0] },
+    transition: { duration: 1.5, times: [0, 0.2, 0.5, 0.7, 1], repeat: Infinity, repeatDelay: 0.6, ease: "easeInOut" },
+  },
+  {
+    key: 'flip-horizontal',
+    initial: { scaleX: 1 },
+    animate: { scaleX: [1, -1, 1] },
+    transition: { duration: 1.2, times: [0, 0.5, 1], repeat: Infinity, repeatDelay: 0.5, ease: "easeInOut" },
+  },
+  {
+    key: 'spin-reverse',
+    initial: { rotate: 0 },
+    animate: { rotate: [0, -360, 0] },
+    transition: { duration: 1.4, times: [0, 0.5, 1], repeat: Infinity, repeatDelay: 0.7, ease: "linear" },
+  },
+];
+
+export default function ConsensusBanner({ show, players = [], onComplete }: { show: boolean; players: any[]; onComplete?: () => void }) {
   const [visible, setVisible] = useState(show);
+
+  // Assign a random animation to each avatar (memoized per render)
+  const avatarAnimIndexes = useMemo(() =>
+    players.map(() => Math.floor(Math.random() * avatarAnimations.length)),
+    [players.length, show]
+  );
 
   useEffect(() => {
     if (show) {
@@ -10,7 +57,7 @@ export default function ConsensusBanner({ show, onComplete }: { show: boolean; o
       const timer = setTimeout(() => {
         setVisible(false);
         if (onComplete) onComplete();
-      }, 3200); // total animation duration
+      }, 5000); // total animation duration
       return () => clearTimeout(timer);
     }
   }, [show, onComplete]);
@@ -18,44 +65,50 @@ export default function ConsensusBanner({ show, onComplete }: { show: boolean; o
   return (
     <AnimatePresence>
       {visible && (
-        <motion.div
-          initial={{ y: -60, scale: 0.8, opacity: 0 }}
-          animate={{ y: 0, scale: 1.08, opacity: 1 }}
-          exit={{ opacity: 0, scale: 0.7, y: -30 }}
-          transition={{ type: "spring", stiffness: 300, damping: 22, duration: 0.7, ease: "easeInOut" }}
-          className="fixed top-20 left-0 w-full flex justify-center z-50"
-        >
-          <div className="relative flex items-center justify-center">
-            {/* Sparkle */}
-            <motion.span
-              initial={{ opacity: 0, scale: 0.7, rotate: 0 }}
-              animate={{ opacity: 1, scale: 1.2, rotate: 20 }}
-              exit={{ opacity: 0, scale: 0.7, rotate: 0 }}
-              transition={{ duration: 0.7, ease: "easeIn" }}
-              className="absolute -top-4 right-0 z-10"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8">
-                <path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07-7.07l-1.42 1.42M6.34 17.66l-1.42 1.42M17.66 17.66l-1.42-1.42M6.34 6.34L4.92 4.92" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </motion.span>
-            {/* Banner */}
+        <>
+          <Confetti duration={5000} />
+          <motion.div
+            initial={{ y: "-50%", scale: 0.9, opacity: 0 }}
+            animate={{ y: "-50%", scale: 1, opacity: 1 }}
+            exit={{ y: "-50%", scale: 0.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22, duration: 0.7 }}
+            className="fixed left-0 top-1/2 z-[100] w-screen flex flex-col items-center pointer-events-none"
+            style={{ transform: "translateY(-50%)" }}
+          >
             <motion.div
-              initial={{ boxShadow: "0 0 0 0 var(--accent-color, #6366f1)" }}
-              animate={{
-                boxShadow: [
-                  "0 0 0 0 var(--accent-color, #6366f1)",
-                  "0 0 16px 8px var(--accent-color, #6366f1aa)",
-                  "0 0 0 0 var(--accent-color, #6366f1)"
-                ]
-              }}
-              transition={{ duration: 1.2, times: [0, 0.5, 1] }}
-              className="px-6 py-2 rounded-2xl text-white font-extrabold text-xl shadow-lg border-2 border-accent animate-pulse-slow animate-gradient-consensus"
-              style={{ filter: "drop-shadow(0 0 8px var(--accent-color, #6366f1))", background: "linear-gradient(270deg, var(--accent-from, #6366f1), var(--accent-to, #a21caf), var(--accent-from, #6366f1))", backgroundSize: "400% 400%" }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1.08, opacity: 1 }}
+              exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ duration: 0.7, ease: "easeInOut" }}
+              className="w-screen h-48 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white font-extrabold text-3xl md:text-4xl shadow-2xl border-2 border-accent flex flex-col items-center justify-center"
+              style={{ boxShadow: "0 0 32px 0 #a5b4fc55", borderRadius: 0, padding: 0 }}
             >
-              🎉 Consensus Achieved!
+              <span className="text-6xl md:text-7xl font-extrabold w-full text-center leading-tight">Consensus Achieved!</span>
+              <div className="flex flex-row items-center justify-center mt-8">
+                {players.map((player, i) => {
+                  const anim = avatarAnimations[avatarAnimIndexes[i] % avatarAnimations.length];
+                  return (
+                    <motion.div
+                      key={player.id}
+                      initial={anim.initial}
+                      animate={anim.animate}
+                      transition={anim.transition}
+                      style={{ marginLeft: i === 0 ? 0 : -12, marginRight: 0 }}
+                    >
+                      <PlayerAvatar
+                        name={player.name}
+                        avatarStyle={player.avatarStyle}
+                        avatarSeed={player.avatarSeed}
+                        size="lg"
+                        className="w-16 h-16"
+                      />
+                    </motion.div>
+                  );
+                })}
+              </div>
             </motion.div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

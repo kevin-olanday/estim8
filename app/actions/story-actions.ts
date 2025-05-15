@@ -70,9 +70,9 @@ export async function setActiveStory(storyId: string) {
     throw new Error("Only the host can change the active story")
   }
 
-  // Set all stories in the room to "idle"
+  // Set all non-completed stories in the room to "idle"
   await prisma.story.updateMany({
-    where: { roomId },
+    where: { roomId, status: { not: "completed" } },
     data: { status: "idle" },
   })
 

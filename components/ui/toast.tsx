@@ -25,7 +25,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-xl bg-zinc-900/90 text-white shadow-xl border border-zinc-700 p-6 transition-all before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl before:bg-accent data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full"
+  "group pointer-events-auto relative flex w-full items-center space-x-4 overflow-hidden rounded-xl bg-zinc-900/90 text-white shadow-xl border border-zinc-700 p-6 transition-all before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl before:bg-accent data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full"
 )
 
 const Toast = React.forwardRef<
@@ -38,8 +38,10 @@ const Toast = React.forwardRef<
       className={cn(toastVariants(), className)}
       {...props}
     >
-      <Info className="w-8 h-8 mr-4 text-accent drop-shadow-glow shrink-0" />
-      {children}
+      <div className="flex items-center gap-4">
+        <Info className="w-8 h-8 text-accent drop-shadow-glow shrink-0" />
+        <div className="flex flex-col gap-1">{children}</div>
+      </div>
     </ToastPrimitives.Root>
   )
 })

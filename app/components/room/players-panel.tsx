@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LogOut, Loader, CheckCircle, Circle, Users } from "lucide-react"
+import { LogOut, Loader, CheckCircle, Circle, Users, Pencil, X, Check } from "lucide-react"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { useToast } from "@/hooks/use-toast"
 import { useCurrentStory } from "@/app/context/current-story-context"
 import type { Deck } from "@/types/card"
 import { kickPlayer } from "@/app/actions/room-actions"
+import { updatePlayer } from "@/app/actions/player-actions"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { PlayerAvatar } from "./player-avatar"
 
@@ -83,6 +84,9 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
 
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
   const [presenceReady, setPresenceReady] = useState(false)
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null)
+  const [editName, setEditName] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
   // Only reset votes when story changes
   useEffect(() => {
@@ -161,14 +165,26 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
       )
     }
 
+    const handleVoteRemoved = (data: any) => {
+      setLocalPlayers((prev) =>
+        prev.map((player) =>
+          player.id === data.playerId
+            ? { ...player, hasVoted: false, vote: null }
+            : player
+        )
+      );
+    };
+
     channel.bind("votes-revealed", handleVotesRevealed)
     channel.bind("vote-submitted", handleVoteSubmitted)
     channel.bind("votes-reset", handleVotesReset)
+    channel.bind("vote-removed", handleVoteRemoved)
 
     return () => {
       channel.unbind("votes-revealed", handleVotesRevealed)
       channel.unbind("vote-submitted", handleVoteSubmitted)
       channel.unbind("votes-reset", handleVotesReset)
+      channel.unbind("vote-removed", handleVoteRemoved)
     }
   }, [channel, votesRevealed])
 
@@ -269,7 +285,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
 
     const handlePlayerKicked = (data: { playerId: string; playerName?: string }) => {
       if (data.playerId === currentPlayerId) {
-        toast({ description: "You were removed from the room by the host.", variant: "destructive" })
+        toast({ description: "You were removed from the room by the host." })
         setTimeout(() => {
           window.location.href = "/"
         }, 2000)
@@ -283,11 +299,27 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
     return () => channel.unbind("player-kicked", handlePlayerKicked)
   }, [channel, currentPlayerId, toast])
 
+  // Listen for player-updated events
+  useEffect(() => {
+    if (!channel) return
+    const handlePlayerUpdated = (data: any) => {
+      setLocalPlayers((prev) =>
+        prev.map((p) =>
+          p.id === data.id
+            ? { ...p, name: data.name, avatarStyle: data.avatarStyle, avatarSeed: data.avatarSeed }
+            : p
+        )
+      )
+    }
+    channel.bind("player-updated", handlePlayerUpdated)
+    return () => channel.unbind("player-updated", handlePlayerUpdated)
+  }, [channel])
+
   const handleKick = async (playerId: string, playerName: string) => {
     try {
       await kickPlayer(playerId)
     } catch (err) {
-      toast({ description: `Failed to kick ${playerName}`, variant: "destructive" })
+      toast({ description: `Failed to kick ${playerName}` })
     }
   }
 
@@ -341,17 +373,27 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             const isOnline = player.isOnline
             const hasVoted = player.hasVoted
 
-            let status: "thinking" | "voted" | "offline"
-            let statusTitle = ""
-            if (!isOnline) {
-              status = "offline"
-              statusTitle = "Offline"
-            } else if (!hasVoted) {
-              status = "thinking"
-              statusTitle = "Estimating"
+            let finalStatus: "thinking" | "voted" | "offline" | "no-vote";
+            let statusTitle = "";
+
+            if (votesRevealed) {
+              if (player.vote) {
+                // Don't use StatusIcon here, directly render the vote
+              } else {
+                finalStatus = "no-vote";
+                statusTitle = "Did not vote";
+              }
             } else {
-              status = "voted"
-              statusTitle = "Voted"
+              if (!isOnline) {
+                finalStatus = "offline";
+                statusTitle = "Offline";
+              } else if (hasVoted) {
+                finalStatus = "voted";
+                statusTitle = "Voted";
+              } else {
+                finalStatus = "thinking";
+                statusTitle = "Estimating";
+              }
             }
 
             return (
@@ -369,13 +411,68 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                     avatarSeed={player.avatarSeed || undefined}
                     size="md"
                   />
-                  <div className="flex-1 min-w-0 flex items-center gap-2 h-9">
-                    <span className="text-sm font-semibold truncate">{player.name}</span>
-                    {isCurrent && (
-                      <span className="ml-1 px-1.5 py-0 rounded-full bg-accent/20 text-accent text-[10px] font-semibold normal-case flex-shrink-0">You</span>
-                    )}
-                    {isHost && (
-                      <span className="ml-1 px-1.5 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
+                  <div className="flex-1 min-w-0 flex items-center gap-2 h-9 relative group/name-edit">
+                    {editingPlayerId === player.id ? (
+                      <form
+                        className="flex items-center gap-1 w-full"
+                        onSubmit={async (e) => {
+                          e.preventDefault()
+                          if (!editName.trim() || isSaving) return
+                          setIsSaving(true)
+                          try {
+                            await updatePlayer(player.id, { name: editName.trim() })
+                            if (player.id === currentPlayerId) {
+                              document.cookie = `playerName=${encodeURIComponent(editName.trim())}; path=/;`;
+                            }
+                            setEditingPlayerId(null)
+                          } catch (err) {
+                            // Optionally show error
+                          } finally {
+                            setIsSaving(false)
+                          }
+                        }}
+                      >
+                        <input
+                          className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-accent w-28"
+                          value={editName}
+                          onChange={e => setEditName(e.target.value)}
+                          disabled={isSaving}
+                          autoFocus
+                        />
+                        <button type="submit" className="text-accent" disabled={isSaving} title="Save">
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button type="button" className="text-muted-foreground" onClick={() => setEditingPlayerId(null)} title="Cancel" disabled={isSaving}>
+                          <X className="w-4 h-4" />
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <span className="text-sm font-semibold truncate">
+                          {player.name}
+                        </span>
+                        {/* Edit icon for current user */}
+                        {isCurrent && (
+                          <button
+                            type="button"
+                            className="ml-1 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                            style={{ background: 'transparent', lineHeight: 0 }}
+                            onClick={() => {
+                              setEditingPlayerId(player.id)
+                              setEditName(player.name)
+                            }}
+                            title="Edit your name"
+                          >
+                            <Pencil className="w-4 h-4 text-accent" />
+                          </button>
+                        )}
+                        {isCurrent && (
+                          <span className="ml-1 px-1.5 py-0 rounded-full bg-accent/20 text-accent text-[10px] font-semibold normal-case flex-shrink-0">You</span>
+                        )}
+                        {isHost && (
+                          <span className="ml-1 px-1.5 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
+                        )}
+                      </>
                     )}
                   </div>
                   {/* Kick button (if present) */}
@@ -406,7 +503,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                       <StatusIcon status="no-vote" title="Did not vote" />
                     )
                   ) : (
-                    <StatusIcon status={hasVoted ? "voted" : "thinking"} title={hasVoted ? "Voted" : "Estimating"} />
+                    <StatusIcon status={finalStatus!} title={statusTitle} />
                   )}
                 </div>
               </div>

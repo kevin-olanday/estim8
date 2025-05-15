@@ -33,9 +33,13 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   const [localVotes, setLocalVotes] = useState<{ playerId: string; playerName: string; value: string; storyId: string }[]>([])
   const [localCompletedStories, setLocalCompletedStories] = useState(roomData.completedStories || [])
   const [emojis, setEmojis] = useState<{ id: number, emoji: string, sender?: string }[]>([])
+  const [celebrationsEnabled, setCelebrationsEnabled] = useState(roomData.celebrationsEnabled)
   const emojiId = useRef(0)
   const EMOJI_LIMIT = 10
   const EMOJI_CHOICES = ["👍", "🎉", "👏", "😍", "😂", "🤔", "🚀"]
+  const [emojiPanelOpen, setEmojiPanelOpen] = useState(false)
+  const [footerVisible, setFooterVisible] = useState(false)
+  const footerRef = useRef<HTMLDivElement | null>(null)
 
   const handleVoteRemoved = useCallback(
     (data: { playerId: string; storyId: string }) => {
@@ -298,6 +302,31 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     return () => channel.unbind('emoji-sent', handleEmoji)
   }, [channel])
 
+  const currentPlayer = roomData.players.find((p: any) => p.id === roomData.currentPlayerId);
+
+  // Listen for real-time celebrations-enabled-updated event
+  useEffect(() => {
+    if (!channel) return;
+    const handler = (data: { celebrationsEnabled: boolean }) => {
+      setCelebrationsEnabled(data.celebrationsEnabled);
+    };
+    channel.bind("celebrations-enabled-updated", handler);
+    return () => channel.unbind("celebrations-enabled-updated", handler);
+  }, [channel]);
+
+  // Intersection Observer to detect footer visibility
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const footer = document.getElementById('app-footer');
+    if (!footer) return;
+    const observer = new window.IntersectionObserver(
+      ([entry]) => setFooterVisible(entry.isIntersecting),
+      { threshold: 0.01 }
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <RoomHeader 
@@ -307,15 +336,39 @@ function RoomClientInner({ roomData }: { roomData: any }) {
         hostName={roomData.players?.find((p: any) => p.isHost)?.name}
       />
       <EmojiOverlay emojis={emojis} />
-      {/* Emoji Toolbox Panel */}
-      <div
-        className="fixed bottom-0 left-0 z-50 w-full flex flex-row items-center gap-3 p-4 bg-surface border-t border-border md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl"
-      >
+      {/* Mobile: Always-visible emoji panel (hidden when footer is visible) */}
+      {!footerVisible && (
+        <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
+          <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
+            {EMOJI_CHOICES.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+                onClick={() => sendEmoji(emoji)}
+                aria-label={`Send ${emoji}`}
+                disabled={emojis.length >= EMOJI_LIMIT}
+                style={{
+                  opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
+                  boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+                }}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Desktop: Always visible emoji panel */}
+      <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
+        <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
+          React
+        </div>
         {EMOJI_CHOICES.map((emoji) => (
           <button
             key={emoji}
             type="button"
-            className="flex-1 h-16 flex items-center justify-center text-4xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95 md:flex-none md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border md:mb-0"
+            className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
             onClick={() => sendEmoji(emoji)}
             aria-label={`Send ${emoji}`}
             disabled={emojis.length >= EMOJI_LIMIT}
@@ -337,7 +390,13 @@ function RoomClientInner({ roomData }: { roomData: any }) {
               boxShadow: '0 4px 16px 0 rgba(0,0,0,0.1)',
             }}
           >
-            <WelcomeMessage isHost={roomData.isHost} roomCode={roomData.code} />
+            <WelcomeMessage
+              isHost={roomData.isHost}
+              roomCode={roomData.code}
+              name={currentPlayer?.name}
+              avatarStyle={currentPlayer?.avatarStyle}
+              avatarSeed={currentPlayer?.avatarSeed}
+            />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 mb-4">
               {/* Left Column (2/3 width on large screens) */}
@@ -352,6 +411,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                   votes={localVotes}
                   players={roomData.players}
                   roomData={roomData}
+                  celebrationsEnabled={celebrationsEnabled}
                 />
               </section>
               
@@ -379,6 +439,8 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                     storyStatus={roomData.currentStory?.status}
                     currentDeckType={roomData.deckType}
                     currentDeck={roomData.deck}
+                    celebrationsEnabled={celebrationsEnabled}
+                    setCelebrationsEnabled={setCelebrationsEnabled}
                   />
                 )}
               </aside>

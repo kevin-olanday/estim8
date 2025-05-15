@@ -162,9 +162,14 @@ export default function CurrentStory({ story, isHost }: CurrentStoryProps) {
         </div>
         <div className="flex gap-2 items-center">
           {isHost && !isEditing && (
-            <button className="btn-utility flex items-center gap-1 text-sm font-semibold px-3 py-1 hover:text-accent transition-colors" onClick={() => setIsEditing(true)} type="button">
-              <Edit className="h-4 w-4" />
-              Edit
+            <button
+              className="gap-2 rounded-lg px-4 py-2 font-semibold border border-accent/60 bg-accent/10 hover:bg-accent/20 text-accent shadow-lg transition-all duration-150 flex items-center text-sm"
+              style={{ lineHeight: 1.2 }}
+              onClick={() => setIsEditing(true)}
+              type="button"
+            >
+              <Edit className="h-5 w-5 align-middle" />
+              <span className="align-middle">Edit</span>
             </button>
           )}
           {isHost && isEditing && (

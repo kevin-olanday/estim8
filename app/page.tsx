@@ -22,6 +22,9 @@ export default function Home() {
   const [joinLoading, setJoinLoading] = useState(false)
   const [isReady, setIsReady] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [joinName, setJoinName] = useState("")
+  const [createName, setCreateName] = useState("")
+  const [joinRoomCode, setJoinRoomCode] = useState("")
   const joinRoomReducer = async (_state: any, formData: FormData) => joinRoom(formData);
   const [joinState, joinFormAction] = useActionState(joinRoomReducer, null);
   // Avatar state for join form
@@ -56,6 +59,7 @@ export default function Home() {
         toast({ title: "Error", description: result.error })
       } else {
         toast({ title: "Room created!", description: "Your Planning Poker room is ready." })
+        setCreateName("")
       }
     } catch (e: any) {
       // Ignore redirect errors
@@ -69,9 +73,40 @@ export default function Home() {
   }
 
   if (!isReady) {
+    // Planning tips
+    const tips = [
+      "Tip: Keep estimates timeboxed for better focus!",
+      "Tip: Use '?' if you're unsure—discussion is key!",
+      "Tip: Encourage everyone to vote independently.",
+      "Tip: Review completed stories to improve future estimates.",
+      "Tip: Use the 'Simple 1-5' deck for quick, small tasks.",
+      "Tip: Don't be afraid to ask for clarification!",
+      "Tip: Consensus is more important than speed.",
+    ];
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-700">
-        <LoadingSpinner size={48} />
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-700">
+        <div className="flex flex-col items-center justify-center gap-8">
+          {/* Large animated spinner */}
+          <div className="animate-spin rounded-full border-8 border-t-8 border-indigo-400 border-t-pink-400 h-24 w-24 mb-6 shadow-2xl" style={{ borderTopColor: '#ec4899', borderRightColor: '#818cf8', borderBottomColor: '#a78bfa', borderLeftColor: '#6366f1' }} />
+          <div className="text-2xl md:text-3xl font-bold text-white mb-2 drop-shadow-lg animate-fade-in">Loading your Planning Poker experience…</div>
+          <div className="mt-4 px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-indigo-100 text-lg font-medium shadow-lg animate-fade-in-up" style={{ maxWidth: 420, textAlign: 'center', letterSpacing: '0.01em' }}>
+            <span className="block text-pink-300 text-base font-semibold mb-1 animate-bounce">💡 Planning Tip</span>
+            <span>{randomTip}</span>
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in { animation: fade-in 0.8s cubic-bezier(.4,0,.2,1) both; }
+          @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(32px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in-up { animation: fade-in-up 1.1s cubic-bezier(.4,0,.2,1) both; }
+        `}</style>
       </div>
     )
   }
@@ -161,17 +196,33 @@ export default function Home() {
                               name="roomCode"
                               placeholder="Room code (e.g. ABCD123)"
                               className="w-full pl-10 text-base sm:text-xl tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              value={joinRoomCode}
+                              onChange={e => setJoinRoomCode(e.target.value)}
                             />
                           </div>
-                          {/* Server action error display */}
-                          {typeof joinState?.error === 'string' && (
+                          {/* Room code error */}
+                          {typeof joinState?.error === 'string' && joinState.error.toLowerCase().includes('room code and name are required') && !joinRoomCode && (
+                            <span className="text-xs text-red-500 mt-1 ml-2 text-left w-full">Room code is required</span>
+                          )}
+                          {typeof joinState?.error === 'string' && joinState.error.toLowerCase().includes('room code') && !joinState.error.toLowerCase().includes('and name') && (
                             <span className="text-xs text-red-500 mt-1 ml-2 text-left w-full">{joinState.error}</span>
                           )}
                         </div>
                         {/* User Name Input */}
-                        <div className="flex flex-col space-y-1.5 relative w-full">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
-                          <Input name="playerName" placeholder="Your name" className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                        <div className="flex flex-col space-y-1.5 w-full">
+                          <div className="relative flex items-center w-full">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
+                              <User size={18} />
+                            </span>
+                            <Input name="playerName" placeholder="Your name" className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" maxLength={20} value={joinName} onChange={e => setJoinName(e.target.value)} />
+                          </div>
+                          {/* Name error */}
+                          {typeof joinState?.error === 'string' && joinState.error.toLowerCase().includes('room code and name are required') && !joinName && (
+                            <span className="text-xs text-red-500 mt-1 ml-2 text-left w-full">Name is required</span>
+                          )}
+                          {typeof joinState?.error === 'string' && joinState.error.toLowerCase().includes('name') && !joinState.error.toLowerCase().includes('room code and') && (
+                            <span className="text-xs text-red-500 mt-1 ml-2 text-left w-full">{joinState.error}</span>
+                          )}
                         </div>
                         {/* Avatar Customization Section */}
                         <fieldset className="flex flex-col items-center mb-2 border border-border rounded-lg p-4 mt-2 w-full">
@@ -203,12 +254,16 @@ export default function Home() {
                         {/* Room Name Input */}
                         <div className="flex flex-col space-y-1.5 relative w-full">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><Crown size={18} /></span>
-                          <Input name="roomName" placeholder="Room name (optional)" className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                          <Input name="roomName" placeholder="Room name (optional)" className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" maxLength={30} />
                         </div>
                         {/* Host Name Input */}
-                        <div className="flex flex-col space-y-1.5 relative w-full">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><User size={18} /></span>
-                          <Input ref={nameInputRef} name="hostName" placeholder="Your name (as host)" required className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                        <div className="flex flex-col space-y-1.5 w-full">
+                          <div className="relative flex items-center w-full">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
+                              <User size={18} />
+                            </span>
+                            <Input ref={nameInputRef} name="hostName" placeholder="Your name (as host)" required className="w-full pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-400" maxLength={20} value={createName} onChange={e => setCreateName(e.target.value)} />
+                          </div>
                         </div>
                         {/* Deck Type */}
                         <div className="flex flex-col space-y-1.5 w-full">
@@ -223,6 +278,7 @@ export default function Home() {
                               <SelectItem value={DeckType.TSHIRT}>T-Shirt Sizes</SelectItem>
                               <SelectItem value={DeckType.POWERS_OF_TWO}>Powers of Two</SelectItem>
                               <SelectItem value={DeckType.SEQUENTIAL}>Sequential</SelectItem>
+                              <SelectItem value={DeckType.SIMPLE_1_5}>Simple 1-5</SelectItem>
                               <SelectItem value={DeckType.RISK}>Risk Assessment</SelectItem>
                               <SelectItem value={DeckType.CUSTOM}>Custom</SelectItem>
                             </SelectContent>
