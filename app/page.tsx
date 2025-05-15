@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState, useActionState } from "react"
+import React, { useRef, useState, useActionState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +34,17 @@ export default function Home() {
   // Add state for avatar options
   const [avatarOptions, setAvatarOptions] = useState({})
   const [hostAvatarOptions, setHostAvatarOptions] = useState({})
+  const [displayedTip, setDisplayedTip] = useState<string | null>(null);
+
+  const tips = [
+    "Tip: Keep estimates timeboxed for better focus!",
+    "Tip: Use '?' if you're unsure—discussion is key!",
+    "Tip: Encourage everyone to vote independently.",
+    "Tip: Review completed stories to improve future estimates.",
+    "Tip: Use the 'Simple 1-5' deck for quick, small tasks.",
+    "Tip: Don't be afraid to ask for clarification!",
+    "Tip: Consensus is more important than speed.",
+  ];
 
   // Simulate readiness (replace with real checks if needed)
   React.useEffect(() => {
@@ -48,6 +59,11 @@ export default function Home() {
       nameInputRef.current.focus()
     }
   }, [tab])
+
+  useEffect(() => {
+    // Set a random tip on client-side after mount
+    setDisplayedTip(tips[Math.floor(Math.random() * tips.length)]);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   async function handleCreateRoom(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -74,16 +90,6 @@ export default function Home() {
 
   if (!isReady) {
     // Planning tips
-    const tips = [
-      "Tip: Keep estimates timeboxed for better focus!",
-      "Tip: Use '?' if you're unsure—discussion is key!",
-      "Tip: Encourage everyone to vote independently.",
-      "Tip: Review completed stories to improve future estimates.",
-      "Tip: Use the 'Simple 1-5' deck for quick, small tasks.",
-      "Tip: Don't be afraid to ask for clarification!",
-      "Tip: Consensus is more important than speed.",
-    ];
-    const randomTip = tips[Math.floor(Math.random() * tips.length)];
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-700">
         <div className="flex flex-col items-center justify-center gap-8">
@@ -92,7 +98,7 @@ export default function Home() {
           <div className="text-2xl md:text-3xl font-bold text-white mb-2 drop-shadow-lg animate-fade-in">Loading your Planning Poker experience…</div>
           <div className="mt-4 px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-indigo-100 text-lg font-medium shadow-lg animate-fade-in-up" style={{ maxWidth: 420, textAlign: 'center', letterSpacing: '0.01em' }}>
             <span className="block text-pink-300 text-base font-semibold mb-1 animate-bounce">💡 Planning Tip</span>
-            <span>{randomTip}</span>
+            <span>{displayedTip || "Loading tip..."}</span>
           </div>
         </div>
         <style jsx>{`
