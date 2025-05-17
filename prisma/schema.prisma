@@ -36,6 +36,7 @@ model Room {
 
   autoRevealVotes Boolean  @default(false)
   celebrationsEnabled Boolean @default(true)
+  emojisEnabled       Boolean @default(true)
 
   activeStory   Story?     @relation("ActiveStory", fields: [activeStoryId], references: [id])
   activeStoryId String?    @unique
@@ -54,7 +55,7 @@ model Story {
   title         String
   description   String?
   status        StoryStatus @default(idle) // "idle" | "active" | "completed"
-  finalScore    Float?
+  finalScore    String?
   votesRevealed Boolean    @default(false)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @default(now())

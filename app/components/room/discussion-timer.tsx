@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Play, Pause, RotateCcw } from "lucide-react"
+import { Play, Pause, RotateCcw, Timer } from "lucide-react"
 import { updateTimerState } from "@/app/actions/room-actions"
 import { usePusherContext } from "@/app/context/pusher-context"
 import { CountdownAlert } from "@/app/components/ui/countdown-alert"
+import { useToast } from "@/hooks/use-toast"
 
 interface DiscussionTimerProps {
   initialTime: number
@@ -20,6 +21,7 @@ export default function DiscussionTimer({ initialTime = 300, isHost }: Discussio
   const [duration, setDuration] = useState(initialTime)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const { channel } = usePusherContext()
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!channel) return
@@ -28,6 +30,13 @@ export default function DiscussionTimer({ initialTime = 300, isHost }: Discussio
       setIsRunning(data.isRunning)
       setTimeLeft(data.timeLeft)
       setDuration(data.duration)
+      if (data.isRunning) {
+        toast({ title: "Timer started", description: "The discussion timer has started." })
+      } else {
+        if (isRunning) {
+          toast({ title: "Timer paused", description: "The discussion timer is paused." })
+        }
+      }
     }
 
     channel.bind("timer-update", handleTimerUpdate)
@@ -35,7 +44,7 @@ export default function DiscussionTimer({ initialTime = 300, isHost }: Discussio
     return () => {
       channel.unbind("timer-update", handleTimerUpdate)
     }
-  }, [channel])
+  }, [channel, toast, isRunning])
 
   useEffect(() => {
     if (isRunning) {
@@ -69,10 +78,12 @@ export default function DiscussionTimer({ initialTime = 300, isHost }: Discussio
           case "start":
             setIsRunning(true)
             await updateTimerState(true, timeLeft, duration)
+            toast({ title: "Timer started", description: "The discussion timer has started." })
             break
           case "pause":
             setIsRunning(false)
             await updateTimerState(false, timeLeft, duration)
+            toast({ title: "Timer paused", description: "The discussion timer is paused." })
             break
           case "reset":
             setIsRunning(false)
@@ -84,7 +95,7 @@ export default function DiscussionTimer({ initialTime = 300, isHost }: Discussio
         console.error("Failed to update timer:", error)
       }
     },
-    [duration, isHost, timeLeft],
+    [duration, isHost, timeLeft, toast],
   )
 
   useEffect(() => {
@@ -122,70 +133,137 @@ export default function DiscussionTimer({ initialTime = 300, isHost }: Discussio
   const handleDurationChange = async (value: number[]) => {
     if (!isHost) return
 
-    const newDuration = value[0]
+    let newDuration = value[0]
+    if (newDuration < 60) newDuration = 60
     setDuration(newDuration)
-
-    if (!isRunning) {
-      setTimeLeft(newDuration)
-      await updateTimerState(false, newDuration, newDuration)
-    }
+    setTimeLeft(newDuration)
+    await updateTimerState(isRunning, newDuration, newDuration)
   }
 
   const progress = (timeLeft / duration) * 100
 
+  // --- Progress Bar Animation and Styling ---
+  // Animate fill width and color based on time left
+  const urgent = timeLeft <= 10 && isRunning && timeLeft > 0;
+  const progressBarGradient = urgent
+    ? 'linear-gradient(90deg, #f43f5e, #ec4899 60%, #fbbf24)'
+    : 'linear-gradient(90deg, #8B5CF6, #EC4899 60%, #06B6D4)';
+
+  // For pulsing effect at urgency
+  const pulseClass = urgent ? 'timer-bar-pulse' : '';
+
+  // --- Progress Bar CSS (inject once) ---
+  if (typeof window !== 'undefined' && !document.getElementById('timer-bar-style')) {
+    const style = document.createElement('style');
+    style.id = 'timer-bar-style';
+    style.innerHTML = `
+      .timer-bar {
+        height: 8px;
+        border-radius: 9999px;
+        background: rgba(255,255,255,0.08);
+        overflow: hidden;
+        position: relative;
+      }
+      .timer-bar-fill {
+        height: 100%;
+        border-radius: 9999px;
+        box-shadow: 0 0 12px 2px #8B5CF6cc, 0 0 24px 4px #EC489988;
+        filter: blur(0.5px);
+        transition: background 0.3s;
+        will-change: width, background;
+      }
+      @keyframes timerBarPulse {
+        0%, 100% { transform: scaleY(1); opacity: 1; }
+        50% { transform: scaleY(1.18); opacity: 0.85; }
+      }
+      .timer-bar-pulse {
+        animation: timerBarPulse 0.7s cubic-bezier(.4,0,.2,1) infinite;
+        box-shadow: 0 0 16px 4px #f43f5ecc, 0 0 32px 8px #ec489988;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Discussion Timer</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {isRunning && timeLeft <= 30 && timeLeft > 0 && <CountdownAlert timeLeft={timeLeft} threshold={30} />}
-
-          <div className="text-center">
-            <span className="text-3xl font-mono">{formatTime(timeLeft)}</span>
-          </div>
-
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-            <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${progress}%` }} />
-          </div>
-
-          <div className="flex justify-center space-x-2">
-            {isRunning ? (
-              <Button variant="outline" size="icon" onClick={() => handleTimerAction("pause")} disabled={!isHost}>
-                <Pause className="h-4 w-4" />
+    <Card className="section-card min-h-[80px] flex flex-col justify-center">
+      <div className="panel-header justify-between mb-1">
+        <h2 className="panel-title flex items-center gap-2">
+          <Timer className="h-5 w-5 text-accent/80" />
+          Discussion Timer
+        </h2>
+      </div>
+      <CardContent className="py-3 px-4">
+        {isHost ? (
+          <div className="flex items-center justify-between gap-2 w-full">
+            {/* Timer (Left) */}
+            <div className="flex items-center min-w-[56px]">
+              <span className="text-2xl font-mono tabular-nums select-none">{formatTime(timeLeft)}</span>
+              {!isRunning && (
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-muted text-xs text-muted-foreground font-semibold border border-border animate-fade-in">Paused</span>
+              )}
+            </div>
+            {/* Divider */}
+            <div className="h-7 w-px bg-border mx-1" />
+            {/* Controls (Center) */}
+            <div className="flex items-center gap-1">
+              {isRunning ? (
+                <Button variant="outline" size="sm" onClick={() => handleTimerAction("pause")} disabled={!isHost} className="transition-transform hover:scale-110 px-2 h-8 w-8">
+                  <Pause className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTimerAction("start")}
+                  disabled={!isHost || timeLeft === 0}
+                  className="transition-transform hover:scale-110 px-2 h-8 w-8"
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => handleTimerAction("reset")} disabled={!isHost} className="transition-transform hover:scale-110 px-2 h-8 w-8">
+                <RotateCcw className="h-4 w-4" />
               </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleTimerAction("start")}
-                disabled={!isHost || timeLeft === 0}
-              >
-                <Play className="h-4 w-4" />
-              </Button>
-            )}
-            <Button variant="outline" size="icon" onClick={() => handleTimerAction("reset")} disabled={!isHost}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {isHost && (
-            <div className="pt-2">
-              <p className="text-xs text-muted-foreground mb-2">Timer duration (minutes)</p>
+            </div>
+            {/* Divider */}
+            <div className="h-7 w-px bg-border mx-1" />
+            {/* Duration Slider (Right) */}
+            <div className="flex flex-col items-end min-w-[110px]">
               <Slider
                 defaultValue={[duration]}
+                min={60}
                 max={900}
                 step={60}
-                onValueChange={handleDurationChange}
-                disabled={isRunning}
+                onValueCommit={handleDurationChange}
+                disabled={isRunning || !isHost}
+                className="w-28 transition-all duration-150 hover:[&_.slider-thumb]:scale-125"
               />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <div className="flex justify-between w-full text-xs text-muted-foreground mt-1">
                 <span>1m</span>
                 <span>15m</span>
               </div>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center w-full py-2">
+            <span className="text-2xl font-mono tabular-nums select-none">{formatTime(timeLeft)}</span>
+            {!isRunning && (
+              <span className="ml-2 px-2 py-0.5 rounded bg-muted text-xs text-muted-foreground font-semibold border border-border animate-fade-in">Paused</span>
+            )}
+          </div>
+        )}
+        {/* Progress Bar */}
+        <div className="w-full mt-3">
+          <div className="timer-bar">
+            <div
+              className={`timer-bar-fill ${pulseClass}`}
+              style={{
+                width: `${progress}%`,
+                background: progressBarGradient,
+                transition: 'background 0.3s',
+              }}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

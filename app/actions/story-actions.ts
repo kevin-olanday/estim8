@@ -184,32 +184,31 @@ export async function completeStory(storyId: string) {
     where: { storyId },
   });
 
-  let finalScore: number | null = null;
+  let finalScore: string | null = null;
 
   if (votes.length === 1) {
     // Only one vote, use it
-    const singleValue = parseFloat(votes[0].choice);
-    finalScore = !isNaN(singleValue) ? singleValue : null;
+    finalScore = votes[0].choice;
   } else if (votes.length > 1) {
     // Check for consensus
     const allSame = votes.every(v => v.choice === votes[0].choice);
     if (allSame) {
-      const consensusValue = parseFloat(votes[0].choice);
-      finalScore = !isNaN(consensusValue) ? consensusValue : null;
+      finalScore = votes[0].choice;
     } else {
-      // No consensus, use median of numeric votes
+      // No consensus, use median of numeric votes if possible, else pick first value
       const numericVotes = votes
         .map(v => parseFloat(v.choice))
         .filter(v => !isNaN(v));
       if (numericVotes.length > 0) {
         const sorted = [...numericVotes].sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
-        finalScore =
+        const median =
           sorted.length % 2 === 0
             ? (sorted[mid - 1] + sorted[mid]) / 2
             : sorted[mid];
+        finalScore = String(median);
       } else {
-        finalScore = null;
+        finalScore = votes[0]?.choice || null;
       }
     }
   }
@@ -222,7 +221,8 @@ export async function completeStory(storyId: string) {
     },
     data: {
       status: "completed",
-      finalScore: finalScore,
+      // Cast as any to allow string or number (schema is String, but types may expect number)
+      finalScore: finalScore as any,
     },
   })
 
@@ -260,7 +260,7 @@ export async function completeStory(storyId: string) {
   return { success: true }
 }
 
-export async function completeStoryWithScore(storyId: string, score: number, options?: { manualOverride?: boolean, originalVotes?: any[] }) {
+export async function completeStoryWithScore(storyId: string, score: string | number, options?: { manualOverride?: boolean, originalVotes?: any[] }) {
   const cookiesStore = await cookies()
   const roomId = cookiesStore.get("roomId")?.value
   const playerId = cookiesStore.get("playerId")?.value
@@ -289,7 +289,8 @@ export async function completeStoryWithScore(storyId: string, score: number, opt
     },
     data: {
       status: "completed",
-      finalScore: score,
+      // Cast as any to allow string or number (schema is String, but types may expect number)
+      finalScore: score as any,
       manualOverride: options?.manualOverride || false,
       originalVotes: options?.originalVotes ? JSON.stringify(options.originalVotes) : undefined,
     },

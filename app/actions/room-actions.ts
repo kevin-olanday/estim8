@@ -233,6 +233,7 @@ export async function getRoomData(roomCode: string) {
     description: story.description,
     finalScore: story.finalScore,
     createdAt: story.createdAt,
+    manualOverride: story.manualOverride || false,
     votes: Array.isArray(story.votes) ? story.votes.map(vote => ({
       playerId: vote.playerId,
       playerName: vote.player?.name ?? "Unknown",
@@ -278,11 +279,12 @@ export async function getRoomData(roomCode: string) {
       })),
     completedStories: completedStoriesData,
     currentUserId: playerId,
-    celebrationsEnabled: room.celebrationsEnabled,
+    celebrationsEnabled: (room as any).celebrationsEnabled ?? true,
+    emojisEnabled: (room as any).emojisEnabled ?? true,
   }
 }
 
-export async function updateDeck(deckType: DeckType, customDeck?: Deck) {
+export async function updateDeck(deckType: DeckType, customDeck?: Deck, deckTheme?: string) {
   const cookiesStore = await cookies()
   const roomId = cookiesStore.get("roomId")?.value
   const playerId = cookiesStore.get("playerId")?.value
@@ -311,6 +313,7 @@ export async function updateDeck(deckType: DeckType, customDeck?: Deck) {
     data: {
       deckType,
       deck: (customDeck || DEFAULT_DECKS[deckType]) as unknown as Prisma.InputJsonValue,
+      ...(deckTheme ? { deckTheme } : {}),
     },
   })
 
@@ -318,6 +321,7 @@ export async function updateDeck(deckType: DeckType, customDeck?: Deck) {
   await pusherServer.trigger(`presence-room-${roomId}`, "deck-updated", {
     deckType,
     deck: customDeck || DEFAULT_DECKS[deckType],
+    deckTheme,
   })
 
   revalidatePath(`/room/[roomId]`)
@@ -462,6 +466,60 @@ export async function updateCelebrationsEnabled(celebrationsEnabled: boolean) {
   await pusherServer.trigger(`presence-room-${roomId}`, "celebrations-enabled-updated", { celebrationsEnabled })
 
   revalidatePath(`/room/[roomId]`)
+  return { success: true }
+}
+
+export async function updateEmojisEnabled(emojisEnabled: boolean) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const playerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !playerId) throw new Error("Not authenticated")
+
+  // Check if player is host
+  const player = await prisma.player.findUnique({ where: { id: playerId, roomId } })
+  if (!player?.isHost) throw new Error("Only the host can update room settings")
+
+  await prisma.room.update({
+    where: { id: roomId },
+    data: { emojisEnabled } as any,
+  })
+
+  // Broadcast to all clients
+  await pusherServer.trigger(`presence-room-${roomId}`, "emojis-enabled-updated", { emojisEnabled })
+
+  revalidatePath(`/room/[roomId]`)
+  return { success: true }
+}
+
+export async function updateTimerState(isRunning: boolean, timeLeft: number, duration: number) {
+  const cookiesStore = await cookies()
+  const roomId = cookiesStore.get("roomId")?.value
+  const playerId = cookiesStore.get("playerId")?.value
+
+  if (!roomId || !playerId) {
+    throw new Error("Not authenticated")
+  }
+
+  // Check if player is host
+  const player = await prisma.player.findUnique({
+    where: {
+      id: playerId,
+      roomId,
+    },
+  })
+
+  if (!player?.isHost) {
+    throw new Error("Only the host can update timer state")
+  }
+
+  // Broadcast timer state to all clients
+  await pusherServer.trigger(`presence-room-${roomId}`, "timer-update", {
+    isRunning,
+    timeLeft,
+    duration,
+  })
+
   return { success: true }
 }
 

@@ -142,6 +142,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
     };
 
     const handleVoteSubmitted = (data: any) => {
+      // Optimistically update the player's vote status
       setLocalPlayers((prev) =>
         prev.map((player) =>
           player.id === data.playerId
@@ -149,10 +150,12 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
                 ...player,
                 hasVoted: true,
                 vote: votesRevealed ? data.value : null,
+                // Add a timestamp to track when the vote was received
+                lastVoteTime: Date.now(),
               }
             : player
         )
-      )
+      );
     }
 
     const handleVotesReset = () => {
@@ -161,15 +164,21 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
           ...player,
           vote: null,
           hasVoted: false,
+          lastVoteTime: undefined,
         }))
-      )
+      );
     }
 
     const handleVoteRemoved = (data: any) => {
       setLocalPlayers((prev) =>
         prev.map((player) =>
           player.id === data.playerId
-            ? { ...player, hasVoted: false, vote: null }
+            ? { 
+                ...player, 
+                hasVoted: false, 
+                vote: null,
+                lastVoteTime: undefined,
+              }
             : player
         )
       );

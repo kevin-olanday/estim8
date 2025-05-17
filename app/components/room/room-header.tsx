@@ -271,10 +271,20 @@ export default function RoomHeader({ roomCode, roomName, isHost, hostName, playe
           {/* Right: Controls */}
           <div className="flex flex-row items-center gap-2 flex-nowrap justify-center sm:justify-end mt-2 sm:mt-0">
             {/* Room Code Badge (no label, smaller font on mobile) */}
-            <span className="ml-2 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold text-base md:text-sm flex items-center gap-2 shadow-lg">
+            <button
+              type="button"
+              onClick={async () => {
+                await copyToClipboard(roomCode)
+                setCopied(true)
+                toast({ title: "Copied!", description: "Room code copied to clipboard." })
+                setTimeout(() => setCopied(false), 700)
+              }}
+              className={`ml-2 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold text-base md:text-sm flex items-center gap-2 shadow-lg transition-transform duration-200 focus:outline-none active:scale-95 ${copied ? 'scale-110 ring-2 ring-pink-400/60' : ''}`}
+              aria-label="Copy room code"
+            >
               <span className="hidden sm:inline">Room ID:&nbsp;</span>
               <span className="tracking-widest font-mono text-sm md:text-base select-all">{roomCode}</span>
-            </span>
+            </button>
             {/* Share Button (hidden on mobile) */}
             <div className="flex gap-3 items-center ml-2">
               {/* Copy Button (desktop/tablet only, or mobile if no Web Share API) */}

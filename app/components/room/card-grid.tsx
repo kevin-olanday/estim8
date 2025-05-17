@@ -48,9 +48,6 @@ const CardGrid: React.FC<CardGridProps> = ({
       <CarouselContent className="-ml-2">
         {deck.map((card, idx) => {
           const isSelected = selectedCard === card.label;
-          const themeClass = deckTheme
-            ? deckTheme + ' ' + getContrastYIQ((gradientPresets.find(g => g.value === deckTheme)?.from || '#fff'))
-            : '';
           return (
             <CarouselItem key={card.label} className="min-w-0 shrink-0 grow-0 basis-[60%] pl-2 flex justify-center items-center">
               <DeckCard
@@ -62,7 +59,10 @@ const CardGrid: React.FC<CardGridProps> = ({
                 }}
                 tabIndex={0}
                 onKeyDown={(e) => handleCardKeyDown(e, idx)}
-                className={`w-44 h-64 transition-all duration-300 ${themeClass}`}
+                className={`w-44 h-64 transition-all duration-300`}
+                deckTheme={deckTheme}
+                gradientPresets={gradientPresets}
+                getContrastYIQ={getContrastYIQ}
               />
             </CarouselItem>
           );

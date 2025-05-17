@@ -8,6 +8,7 @@ import CurrentStory from "@/app/components/room/current-story"
 import PlayersPanel from "@/app/components/room/players-panel"
 import HostControls from "@/app/components/room/host-controls"
 import StoriesPanel from "@/app/components/room/stories-panel"
+import DiscussionTimer from "@/app/components/room/discussion-timer"
 import { Separator } from "@/components/ui/separator"
 import { WelcomeMessage } from "@/app/components/room/welcome-message"
 import { CurrentStoryProvider } from "@/app/context/current-story-context"
@@ -16,6 +17,7 @@ import { useCurrentStory } from "@/app/context/current-story-context"
 import { motion, AnimatePresence } from "framer-motion"
 import axios from "axios"
 import { useToast } from "@/hooks/use-toast"
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 export default function RoomClient({ roomData }: { roomData: any }) {
   return (
@@ -36,7 +38,12 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   const [localVotes, setLocalVotes] = useState<{ playerId: string; playerName: string; value: string; storyId: string }[]>([])
   const [localCompletedStories, setLocalCompletedStories] = useState(roomData.completedStories || [])
   const [emojis, setEmojis] = useState<{ id: number, emoji: string, sender?: string }[]>([])
-  const [celebrationsEnabled, setCelebrationsEnabled] = useState(roomData.celebrationsEnabled)
+  const [celebrationsEnabled, setCelebrationsEnabled] = useState(
+    typeof roomData.celebrationsEnabled === 'boolean' ? roomData.celebrationsEnabled : true
+  );
+  const [emojisEnabled, setEmojisEnabled] = useState(
+    typeof roomData.emojisEnabled === 'boolean' ? roomData.emojisEnabled : true
+  );
   const emojiId = useRef(0)
   const EMOJI_LIMIT = 10
   const EMOJI_CHOICES = ["👍", "🎉", "👏", "😍", "😂", "🤔", "🚀"]
@@ -44,6 +51,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
   const [footerVisible, setFooterVisible] = useState(false)
   const footerRef = useRef<HTMLDivElement | null>(null)
   const [showWelcomeBannerState, setShowWelcomeBannerState] = useState(false);
+  const [deckTheme, setDeckTheme] = useState(roomData.deckTheme || 'bg-gradient-to-br from-blue-500 to-purple-600');
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -228,7 +236,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
           completed: true,
           active: false,
           finalScore: data.finalScore,
-          manualOverride: data.manualOverride,
+          manualOverride: data.manualOverride || false,
           votes: data.votes || []
         }
 
@@ -297,6 +305,16 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     };
     channel.bind("celebrations-enabled-updated", handler);
     return () => channel.unbind("celebrations-enabled-updated", handler);
+  }, [channel]);
+
+  // Listen for real-time emojis-enabled-updated event
+  useEffect(() => {
+    if (!channel) return;
+    const handler = (data: { emojisEnabled: boolean }) => {
+      setEmojisEnabled(data.emojisEnabled);
+    };
+    channel.bind("emojis-enabled-updated", handler);
+    return () => channel.unbind("emojis-enabled-updated", handler);
   }, [channel]);
 
   // Intersection Observer to detect footer visibility
@@ -398,49 +416,73 @@ function RoomClientInner({ roomData }: { roomData: any }) {
       <EmojiOverlay emojis={emojis} />
       {/* Mobile: Always-visible emoji panel (hidden when footer is visible) */}
       {!footerVisible && (
-        <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
-          <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
-            {EMOJI_CHOICES.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
-                onClick={() => sendEmoji(emoji)}
-                aria-label={`Send ${emoji}`}
-                disabled={emojis.length >= EMOJI_LIMIT}
-                style={{
-                  opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
-                  boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
+        <TooltipProvider>
+          <Tooltip open={!emojisEnabled ? undefined : false}>
+            <TooltipTrigger asChild>
+              <div className="fixed bottom-0 left-0 z-[110] w-full md:hidden">
+                <div className="flex flex-row items-center gap-2 justify-center p-3 bg-surface border-t border-border animate-fade-in-down">
+                  {EMOJI_CHOICES.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="h-12 w-12 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+                      onClick={() => sendEmoji(emoji)}
+                      aria-label={`Send ${emoji}`}
+                      disabled={emojis.length >= EMOJI_LIMIT || !emojisEnabled}
+                      style={{
+                        opacity: emojis.length >= EMOJI_LIMIT || !emojisEnabled ? 0.5 : 1,
+                        boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+                        cursor: !emojisEnabled ? 'not-allowed' : undefined,
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </TooltipTrigger>
+            {!emojisEnabled && (
+              <TooltipContent side="top" align="center">
+                Disabled by host
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       )}
       {/* Desktop: Always visible emoji panel */}
-      <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
-        <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
-          React
-        </div>
-        {EMOJI_CHOICES.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
-            onClick={() => sendEmoji(emoji)}
-            aria-label={`Send ${emoji}`}
-            disabled={emojis.length >= EMOJI_LIMIT}
-            style={{
-              opacity: emojis.length >= EMOJI_LIMIT ? 0.5 : 1,
-              boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
-            }}
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
+      <TooltipProvider>
+        <Tooltip open={!emojisEnabled ? undefined : false}>
+          <TooltipTrigger asChild>
+            <div className="hidden md:fixed md:top-1/2 md:left-6 md:bottom-auto md:w-auto md:h-auto md:-translate-y-1/2 md:flex md:flex-col md:gap-2 md:bg-surface md:rounded-2xl md:shadow-xl md:p-2 md:border md:border-border md:backdrop-blur-xl">
+              <div className="mb-3 mt-1 text-xs font-semibold text-indigo-200 tracking-wide uppercase select-none pointer-events-none">
+                React
+              </div>
+              {EMOJI_CHOICES.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="md:w-12 md:h-12 md:text-2xl md:rounded-xl md:shadow md:bg-background/80 md:border md:border-border mb-0 flex items-center justify-center text-2xl rounded-full bg-accent/10 hover:bg-accent/30 border border-accent/20 shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:ring-offset-2 focus:ring-offset-background hover:scale-110 active:scale-95"
+                  onClick={() => sendEmoji(emoji)}
+                  aria-label={`Send ${emoji}`}
+                  disabled={emojis.length >= EMOJI_LIMIT || !emojisEnabled}
+                  style={{
+                    opacity: emojis.length >= EMOJI_LIMIT || !emojisEnabled ? 0.5 : 1,
+                    boxShadow: '0 2px 8px 0 rgba(124,58,237,0.10)',
+                    cursor: !emojisEnabled ? 'not-allowed' : undefined,
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </TooltipTrigger>
+          {!emojisEnabled && (
+            <TooltipContent side="right" align="center">
+              Disabled by host
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
       
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto px-0 sm:px-6 lg:px-8 py-6">
@@ -464,7 +506,10 @@ function RoomClientInner({ roomData }: { roomData: any }) {
               {/* Left Column (2/3 width on large screens) */}
               <section className="space-y-6">
                 <CurrentStory story={currentStory} isHost={roomData.isHost} />
-                <Separator />
+                {/* Mobile: Discussion Timer below CurrentStory, above VotingPanel */}
+                <div className="block lg:hidden">
+                  <DiscussionTimer initialTime={300} isHost={roomData.isHost} />
+                </div>
                 <VotingPanel
                   deck={roomData.deck}
                   currentVote={roomData.currentUserVote}
@@ -474,6 +519,8 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                   players={localPlayers}
                   roomData={roomData}
                   celebrationsEnabled={celebrationsEnabled}
+                  deckTheme={deckTheme}
+                  setDeckTheme={setDeckTheme}
                 />
               </section>
               
@@ -485,6 +532,10 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                   isHost={roomData.isHost}
                   revealedVotes={revealedVotes}
                 />
+                {/* Desktop: Discussion Timer in sidebar */}
+                <div className="hidden lg:block">
+                  <DiscussionTimer initialTime={300} isHost={roomData.isHost} />
+                </div>
                 <PlayersPanel
                   players={localPlayers}
                   hostId={roomData.hostId}
@@ -503,6 +554,9 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                     currentDeck={roomData.deck}
                     celebrationsEnabled={celebrationsEnabled}
                     setCelebrationsEnabled={setCelebrationsEnabled}
+                    emojisEnabled={emojisEnabled}
+                    setEmojisEnabled={setEmojisEnabled}
+                    deckTheme={deckTheme}
                   />
                 )}
               </aside>

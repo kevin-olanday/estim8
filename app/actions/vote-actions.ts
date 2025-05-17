@@ -15,101 +15,95 @@ export async function submitVote(storyId: string, value: string) {
     throw new Error("Not authenticated")
   }
 
-  // Check if story exists and is active
-  const story = await prisma.story.findFirst({
-    where: {
-      id: storyId,
-      roomId,
-      status: "active",
-    },
-  })
-  if (!story) throw new Error("Story not active")
-
-  // Get the room to validate the vote against the deck
-  const room = await prisma.room.findUnique({
-    where: {
-      id: roomId,
-    },
-    select: {
-      deck: true,
-      players: {
-        select: {
-          id: true,
+  // Use a transaction to ensure data consistency
+  const result = await prisma.$transaction(async (tx) => {
+    // Get story and room data in a single query
+    const story = await tx.story.findFirst({
+      where: {
+        id: storyId,
+        roomId,
+        status: "active",
+      },
+      include: {
+        room: {
+          select: {
+            deck: true,
+            players: {
+              select: {
+                id: true,
+              },
+            },
+            autoRevealVotes: true,
+          },
         },
       },
-      autoRevealVotes: true,
-    },
-  })
+    })
 
-  if (!room) {
-    throw new Error("Room not found")
-  }
+    if (!story) throw new Error("Story not active")
+    if (!story.room) throw new Error("Room not found")
 
-  // Validate that the vote value exists in the deck
-  let deck = room.deck as any
-  if (typeof deck === "string") {
-    try {
-      deck = JSON.parse(deck)
-    } catch {
-      throw new Error("Invalid deck format")
+    // Validate that the vote value exists in the deck
+    let deck = story.room.deck as any
+    if (typeof deck === "string") {
+      try {
+        deck = JSON.parse(deck)
+      } catch {
+        throw new Error("Invalid deck format")
+      }
     }
-  }
-  const isValidVote = Array.isArray(deck) && deck.some((card) => card.label === value)
+    const isValidVote = Array.isArray(deck) && deck.some((card) => card.label === value)
 
-  if (!isValidVote) {
-    throw new Error("Invalid vote value")
-  }
+    if (!isValidVote) {
+      throw new Error("Invalid vote value")
+    }
 
-  // Create or update the vote
-  await prisma.vote.upsert({
-    where: {
-      playerId_storyId: {
+    // Create or update the vote
+    const vote = await tx.vote.upsert({
+      where: {
+        playerId_storyId: {
+          playerId,
+          storyId,
+        },
+      },
+      update: {
+        choice: value,
+      },
+      create: {
         playerId,
         storyId,
+        choice: value,
       },
-    },
-    update: {
-      choice: value,
-    },
-    create: {
-      playerId,
-      storyId,
-      choice: value,
-    },
-  })
+      include: {
+        player: true,
+      },
+    })
 
-  // Fetch the updated vote and player name
-  const vote = await prisma.vote.findUnique({
-    where: {
-      playerId_storyId: {
-        playerId,
+    // Count votes for this story
+    const voteCount = await tx.vote.count({
+      where: {
         storyId,
       },
-    },
-    include: {
-      player: true,
-    },
-  })
+    })
 
-  // Count votes for this story
-  const votes = await prisma.vote.count({
-    where: {
-      storyId,
-    },
-  })
+    // If all players have voted and autoRevealVotes is enabled, reveal votes
+    if (voteCount === story.room.players.length && story.room.autoRevealVotes) {
+      await revealVotes(storyId)
+    }
 
-  // If all players have voted and autoRevealVotes is enabled, reveal votes
-  if (votes === room.players.length && room.autoRevealVotes) {
-    await revealVotes(storyId)
-  }
+    return { vote, voteCount, story }
+  })
 
   // Broadcast vote update via Pusher
   await pusherServer.trigger(`presence-room-${roomId}`, "vote-submitted", {
     playerId,
     storyId,
-    value: vote?.choice,
-    playerName: vote?.player?.name ?? "",
+    value: result.vote.choice,
+    playerName: result.vote.player?.name ?? "",
     hasVoted: true,
+    timestamp: Date.now(),
+    totalVotes: result.voteCount,
+    totalPlayers: result.story.room.players.length,
+    isComplete: result.voteCount === result.story.room.players.length
   })
 
   revalidatePath(`/room/[roomId]`)

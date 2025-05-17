@@ -54,16 +54,19 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
       ? (numericVotes.reduce((sum, value) => sum + value, 0) / numericVotes.length).toFixed(1)
       : "N/A"
 
-  // Find the most common vote
-  let mostCommonVote = ""
-  let highestCount = 0
-
+  // Find the most common vote(s), including ties
+  let mostCommonVotes: string[] = [];
+  let highestCount = 0;
   Object.entries(voteCounts).forEach(([value, count]) => {
     if (count > highestCount) {
-      mostCommonVote = value
-      highestCount = count
+      mostCommonVotes = [value];
+      highestCount = count;
+    } else if (count === highestCount) {
+      if (!mostCommonVotes.includes(value)) {
+        mostCommonVotes.push(value);
+      }
     }
-  })
+  });
 
   // Median
   let median = "N/A"
@@ -201,7 +204,7 @@ export function VoteStatistics({ votes, deck, currentUserId, players, isHost, on
           <div>
             <div className="text-xs text-muted-foreground mb-1">Most Common</div>
             <span className="inline-flex items-center gap-1 font-bold text-accent">
-              {mostCommonVote}
+              {mostCommonVotes.length > 0 ? mostCommonVotes.join(', ') : '—'}
               {allSame && (
                 <span
                   className="ml-2 px-2 py-0.5 rounded-full text-white text-xs font-semibold shadow animate-bounce"

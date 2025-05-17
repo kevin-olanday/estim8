@@ -70,7 +70,7 @@ const CardFan: React.FC<CardFanProps> = ({
   const center = Math.floor(deck.length / 2);
   const cardsWithMeta = deck.map((card, i) => {
     const angle = (i - center) * 12;
-    const xOffset = (i - center) * 56;
+    const xOffset = (i - center) * 72;
     return { card, angle, xOffset, index: i };
   });
   // Sort by xOffset so cards further right render last (on top)
@@ -80,11 +80,8 @@ const CardFan: React.FC<CardFanProps> = ({
       <div className={cn("sm:relative sm:flex sm:items-center sm:justify-center sm:h-[28rem] w-full min-w-[600px] sm:min-w-0 overflow-visible", (isVoting || disabled) && "opacity-60 pointer-events-none") }>
         {isVoting && (
           <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-            <svg className="animate-spin h-12 w-12 text-blue-400 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-            </svg>
-            <span className="text-blue-300 font-medium">Submitting vote…</span>
+            <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-2" />
+            <span className="text-blue-300 font-medium text-sm">Voting...</span>
           </div>
         )}
         {sorted.map(({ card, angle, xOffset, index: i }) => {
@@ -160,13 +157,42 @@ const CardFan: React.FC<CardFanProps> = ({
                     (isHovered || isSelected) &&
                       "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ",
                     isSelected
-                      ? "text-5xl font-extrabold tracking-wide bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent font-[Lexend]"
+                      ? `text-5xl font-extrabold tracking-wide font-[Lexend]`
                       : (isHovered && !isSelected)
                         ? "text-2xl font-bold"
                         : getContrastYIQ((gradientPresets.find(g => g.value === deckTheme)?.from || '#fff'))
                   )}
                 >
-                  {card.label}
+                  <span className="relative inline-block">
+                    {isSelected && (() => {
+                      const contrastColor = getContrastYIQ((gradientPresets.find(g => g.value === deckTheme)?.from || '#fff')) === 'text-black' ? '#222' : '#fff';
+                      return (
+                        <span
+                          className="absolute left-1/2 top-1/2 z-10 pointer-events-none"
+                          style={{ transform: 'translate(-50%, -50%)' }}
+                        >
+                          <svg
+                            width="80" height="80" viewBox="0 0 80 80"
+                            className="block w-20 h-20"
+                          >
+                            <circle
+                              cx="40" cy="40" r="32"
+                              fill="none"
+                              stroke={contrastColor}
+                              strokeWidth="5"
+                              strokeDasharray="201.06"
+                              strokeDashoffset="201.06"
+                              className="encircle-anim"
+                              style={{
+                                filter: `drop-shadow(0 0 8px ${contrastColor}88)`,
+                              }}
+                            />
+                          </svg>
+                        </span>
+                      );
+                    })()}
+                    <span className="relative z-20" style={isSelected ? { color: getContrastYIQ((gradientPresets.find(g => g.value === deckTheme)?.from || '#fff')) === 'text-black' ? '#222' : '#fff' } : {}}>{card.label}</span>
+                  </span>
                 </span>
               </div>
             </motion.button>

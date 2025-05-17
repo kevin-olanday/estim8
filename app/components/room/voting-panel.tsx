@@ -17,6 +17,7 @@ import ConsensusBanner from "@/app/components/room/ConsensusBanner"
 import { completeStory, completeStoryWithScore } from "@/app/actions/story-actions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useSwipeable } from 'react-swipeable'
 
 interface Vote {
   playerId: string
@@ -52,6 +53,8 @@ interface VotingPanelProps {
   }
   storyId?: string
   celebrationsEnabled: boolean
+  deckTheme: string
+  setDeckTheme: (theme: string) => void
 }
 
 interface GradientPreset {
@@ -70,6 +73,8 @@ export default function VotingPanel({
   players = [],
   roomData,
   celebrationsEnabled,
+  deckTheme,
+  setDeckTheme,
 }: VotingPanelProps) {
   const { currentStory, setCurrentStory } = useCurrentStory()
   const storyId = currentStory?.id
@@ -86,8 +91,8 @@ export default function VotingPanel({
   const [showConsensusConfetti, setShowConsensusConfetti] = useState(false);
   const [dealAnimKey, setDealAnimKey] = useState(0);
   const [showManualOverrideModal, setShowManualOverrideModal] = useState(false)
-  const [medianScore, setMedianScore] = useState<number | null>(null)
-  const [overrideScore, setOverrideScore] = useState<number | null>(null)
+  const [medianScore, setMedianScore] = useState<string | null>(null)
+  const [overrideScore, setOverrideScore] = useState<string | null>(null)
   const [pendingStoryId, setPendingStoryId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false);
 
@@ -163,41 +168,35 @@ export default function VotingPanel({
 
   const handleVote = useCallback(
     async (value: string) => {
-      console.log('[VotingPanel] handleVote called with value:', value);
-      console.log('[VotingPanel] Current state:', {
-        isVoting,
-        storyId,
-        selectedCard,
-        currentVote
-      });
-
       if (isVoting || !storyId) return
 
       // If the card is already selected, remove the vote
       if (selectedCard === value) {
-        console.log('[VotingPanel] Removing vote for value:', value);
-        setIsVoting(true)
+        // Optimistically update UI
         setSelectedCard(null)
+        setIsVoting(true)
         try {
           await removeVote(storyId)
-          console.log('[VotingPanel] Vote removed successfully');
         } catch (error) {
           console.error("[VotingPanel] Failed to remove vote:", error)
+          // Revert optimistic update on error
+          setSelectedCard(value)
         } finally {
           setIsVoting(false)
         }
         return
       }
 
-      console.log('[VotingPanel] Submitting vote for value:', value);
-      setIsVoting(true)
+      // Optimistically update UI
       setSelectedCard(value)
+      setIsVoting(true)
 
       try {
         await submitVote(storyId, value)
-        console.log('[VotingPanel] Vote submitted successfully');
       } catch (error) {
         console.error("[VotingPanel] Failed to submit vote:", error)
+        // Revert optimistic update on error
+        setSelectedCard(null)
       } finally {
         setIsVoting(false)
       }
@@ -275,7 +274,6 @@ export default function VotingPanel({
     { name: 'Charcoal Burn', value: 'bg-gradient-to-br from-[#2c2c2e] to-[#444]', from: '#2c2c2e', to: '#444', category: 'dark' },
     { name: 'Galaxy Fade', value: 'bg-gradient-to-br from-[#2d1b69] to-[#000]', from: '#2d1b69', to: '#000', category: 'dark' },
   ];
-  const [deckTheme, setDeckTheme] = useState<string>(gradientPresets[1].value);
 
   // Aurora background theme sync
   useEffect(() => {
@@ -420,10 +418,6 @@ export default function VotingPanel({
 
     if (justRevealed && hasConsensus && celebrationsEnabled) {
       setShowConsensusConfetti(true);
-      const timer = setTimeout(() => {
-        setShowConsensusConfetti(false);
-      }, 5000);
-      return () => clearTimeout(timer);
     } else if (!currentVotesRevealed || !hasConsensus || !celebrationsEnabled) {
       // Ensure banner is hidden if conditions are not met (e.g., votes not revealed, no consensus, or celebrations off)
       setShowConsensusConfetti(false);
@@ -438,14 +432,14 @@ export default function VotingPanel({
     console.log('[VotingPanel] handleCompleteStory called', { currentStory, votes });
     if (!currentStory?.id || !isHost) return
     if (!votes || votes.length === 0) return
-    const voteValues = votes.map(v => Number(v.value))
-    const hasConsensus = voteValues.every(v => v === voteValues[0])
+    const voteValues = votes.map(v => Number(v.value)).filter(v => !isNaN(v))
+    const hasConsensus = voteValues.length > 0 && voteValues.every(v => v === voteValues[0])
     if (hasConsensus) {
       await completeStory(currentStory.id)
     } else {
       const median = calculateMedian(voteValues)
-      setMedianScore(median)
-      setOverrideScore(median)
+      setMedianScore(voteValues.length > 0 ? String(median) : "")
+      setOverrideScore(voteValues.length > 0 ? String(median) : "")
       setPendingStoryId(currentStory.id)
       setShowManualOverrideModal(true)
     }
@@ -455,9 +449,13 @@ export default function VotingPanel({
   const deckInteractionDisabled = !!currentStory?.votesRevealed && currentStory?.status !== "completed";
 
   const confirmManualOverride = async () => {
-    if (!pendingStoryId || overrideScore === null) return
+    if (!pendingStoryId || overrideScore === null || overrideScore === "") return
     try {
-      await completeStoryWithScore(pendingStoryId, overrideScore, {
+      let score: string | number = overrideScore;
+      if (!isNaN(Number(overrideScore)) && overrideScore.trim() !== "") {
+        score = Number(overrideScore);
+      }
+      await completeStoryWithScore(pendingStoryId, score as any, {
         manualOverride: true,
         originalVotes: votes
       })
@@ -471,11 +469,41 @@ export default function VotingPanel({
   }
 
   // Add calculateMedian helper
-  const calculateMedian = (arr: number[]): number => {
+  const calculateMedian = (arr: number[]): string => {
+    if (!arr.length) return "N/A";
     const sorted = [...arr].sort((a, b) => a - b)
     const mid = Math.floor(sorted.length / 2)
-    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+    if (sorted.length % 2 !== 0) return String(sorted[mid]);
+    const avg = (sorted[mid - 1] + sorted[mid]) / 2;
+    // If avg is an integer, show as int, else as float with 1 decimal
+    return Number.isInteger(avg) ? String(avg) : avg.toFixed(1);
   }
+
+  // --- Swipeable Handlers for Card Navigation ---
+  const cardLabels = deck.map(card => card.label)
+  const currentIdx = selectedCard ? cardLabels.indexOf(selectedCard) : -1
+  const canSwipe = !isVoting && !deckInteractionDisabled && deck.length > 1
+  const handleSwipeLeft = () => {
+    if (!canSwipe) return
+    if (currentIdx < deck.length - 1) {
+      const next = cardLabels[currentIdx + 1] ?? cardLabels[0]
+      handleVote(next)
+    }
+  }
+  const handleSwipeRight = () => {
+    if (!canSwipe) return
+    if (currentIdx > 0) {
+      const prev = cardLabels[currentIdx - 1] ?? cardLabels[deck.length - 1]
+      handleVote(prev)
+    }
+  }
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: handleSwipeLeft,
+    onSwipedRight: handleSwipeRight,
+    trackMouse: false,
+    preventScrollOnSwipe: true,
+    delta: 30,
+  })
 
   return (
     <>
@@ -511,7 +539,7 @@ export default function VotingPanel({
           handleSurpriseMe={() => { handleSurpriseMe(); setShowThemeModal(false); }}
         />
         {/* Hand of Cards Layout (desktop), grid fallback (mobile) */}
-        <div className="mb-2">
+        <div {...swipeHandlers} className="mb-2 touch-pan-x select-none">
           <CardFan
             deck={deck}
             selectedCard={selectedCard}
@@ -531,7 +559,7 @@ export default function VotingPanel({
           />
         </div>
         {/* Mobile grid fallback */}
-        <div className="mb-2">
+        <div {...swipeHandlers} className="mb-2 touch-pan-x select-none">
           <CardGrid
             deck={deck}
             selectedCard={selectedCard}
@@ -614,9 +642,9 @@ export default function VotingPanel({
           </div>
           <div className="space-y-3 mt-2">
             <Input
-              type="number"
+              type="text"
               value={overrideScore || ''}
-              onChange={(e) => setOverrideScore(parseFloat(e.target.value))}
+              onChange={(e) => setOverrideScore(e.target.value)}
               placeholder="Override Score"
             />
             <button
