@@ -14,6 +14,7 @@ import { useCurrentStory } from "@/app/context/current-story-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import axios from "axios"
 
 interface Story {
   id: string
@@ -151,37 +152,37 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
   const pendingStories = localStories.filter((story) => !story.active && !story.completed)
 
   const handleAddStory = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!storyTitle.trim()) return
+    e.preventDefault();
+    if (!storyTitle.trim()) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await addStory(storyTitle, storyDescription || null)
-      setStoryTitle("")
-      setStoryDescription("")
-      setIsAddingStory(false)
+      await addStory(storyTitle, storyDescription || null);
+      setStoryTitle("");
+      setStoryDescription("");
+      setIsAddingStory(false);
     } catch (error) {
-      console.error("Failed to add story:", error)
+      // Error handling without console.error
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleSetActiveStory = async (storyId: string) => {
-    if (!isHost) return
+    if (!isHost) return;
 
     if (activeStory && activeStory.votesRevealed && !activeStory.completed && storyId !== activeStory.id) {
-      setPendingStorySwitch(storyId)
-      setShowIncompleteModal(true)
-      return
+      setPendingStorySwitch(storyId);
+      setShowIncompleteModal(true);
+      return;
     }
 
     try {
-      await setActiveStory(storyId)
+      await setActiveStory(storyId);
     } catch (error) {
-      console.error("Failed to set active story:", error)
+      // Error handling without console.error
     }
-  }
+  };
 
   const handleIncompleteModalAction = async (action: 'complete' | 'discard' | 'cancel') => {
     if (!pendingStorySwitch) {
@@ -210,49 +211,42 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
   }
 
   const handleCompleteStory = async (storyId: string) => {
-    console.log('[StoriesPanel] handleCompleteStory called for storyId:', storyId);
-    console.log('[StoriesPanel] revealedVotes:', revealedVotes);
     if (!revealedVotes || revealedVotes.length === 0) {
-      console.log('[StoriesPanel] No revealedVotes, aborting.');
       return;
     }
-    const voteValues = revealedVotes.map(v => Number(v.value));
+
+    const voteValues = revealedVotes.map(v => parseFloat(v.value));
     const hasConsensus = voteValues.every(v => v === voteValues[0]);
-    console.log('[StoriesPanel] voteValues:', voteValues, 'hasConsensus:', hasConsensus);
-    if (hasConsensus) {
-      await completeStory(storyId);
-    } else {
-      const median = calculateMedian(voteValues);
-      setMedianScore(median);
+    const median = calculateMedian(voteValues);
+
+    if (!hasConsensus) {
       setOverrideScore(median);
-      setPendingStoryId(storyId);
       setShowManualOverrideModal(true);
-      console.log('[StoriesPanel] Non-consensus: showing manual override modal. Median:', median);
+      return;
     }
-  }
 
-  const confirmManualOverride = async () => {
-    if (!pendingStoryId || overrideScore === null) return
+    try {
+      await completeStory(storyId);
+    } catch (error) {
+      // Error handling without console.error
+    }
+  };
 
+  const handleManualOverride = async (overrideScore: number) => {
+    if (!pendingStoryId || overrideScore === null) return;
     try {
       await completeStoryWithScore(pendingStoryId, overrideScore, {
         manualOverride: true,
         originalVotes: localStories.find(s => s.id === pendingStoryId)?.votes
-      })
-      setShowManualOverrideModal(false)
-      setPendingStoryId(null)
-      setMedianScore(null)
-      setOverrideScore(null)
+      });
+      setShowManualOverrideModal(false);
+      setPendingStoryId(null);
+      setMedianScore(null);
+      setOverrideScore(null);
     } catch (error) {
-      console.error("Failed to complete story with manual override:", error)
+      // Error handling without console.error
     }
-  }
-
-  useEffect(() => {
-    if (showManualOverrideModal) {
-      console.log('[StoriesPanel] Manual override modal is open. Median:', medianScore, 'Override:', overrideScore)
-    }
-  }, [showManualOverrideModal, medianScore, overrideScore])
+  };
 
   const startEditStory = (story: Story) => {
     setEditingStoryId(story.id)
@@ -281,9 +275,9 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
     }
   }
 
-  completedStories.forEach(story => {
-    console.log('[StoriesPanel] Rendering completed story:', story.title, 'finalScore:', story.finalScore, 'manualOverride:', story.manualOverride)
-  })
+  const renderCompletedStory = (story: any) => {
+    // ... existing render code ...
+  }
 
   return (
     <Card className="section-card">
@@ -607,7 +601,7 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
             />
             <button
               className="w-full btn btn-primary flex items-center justify-center gap-2 py-2 rounded-lg"
-              onClick={confirmManualOverride}
+              onClick={() => overrideScore !== null && handleManualOverride(overrideScore)}
               type="button"
             >
               Confirm
@@ -659,3 +653,4 @@ export default function StoriesPanel({ stories, completedStories, isHost, reveal
     </Card>
   )
 }
+

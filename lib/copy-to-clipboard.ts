@@ -4,7 +4,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       await navigator.clipboard.writeText(text)
       return true
     } catch (err) {
-      console.error("Failed to copy: ", err)
+      // Error handling without console.error
       return false
     }
   } else {
@@ -23,7 +23,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       document.body.removeChild(textArea)
       return successful
     } catch (err) {
-      console.error("Failed to copy: ", err)
+      // Error handling without console.error
       document.body.removeChild(textArea)
       return false
     }

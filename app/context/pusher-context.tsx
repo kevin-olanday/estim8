@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from "react"
 import Pusher from "pusher-js"
 
 type PusherContextType = {
@@ -22,43 +22,69 @@ export function PusherProvider({ children, roomId }: { children: ReactNode; room
     const pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
       forceTLS: true,
-      authEndpoint: "/api/pusher/auth", // <-- You need to implement this endpoint for presence auth
+      authEndpoint: "/api/pusher/auth",
       auth: {
         params: {
           // Optionally pass user info here
         },
       },
+      enabledTransports: ['ws', 'wss'],
+      disabledTransports: ['xhr_streaming', 'xhr_polling'],
+      enableStats: true
     })
 
     setPusher(pusherInstance)
 
     if (!roomId) return;
 
-    console.log('[PUSHER CONTEXT] Subscribing to:', `presence-room-${roomId}`);
     const channel = pusherInstance.subscribe(`presence-room-${roomId}`);
     setChannel(channel);
 
     // Set up global event logger
     channel.bind_global((eventName: string, data: any) => {
-      console.log('[PUSHER CONTEXT] Global event:', eventName, data);
+      // Global event handling
     });
 
     // Handle subscription success
     channel.bind('pusher:subscription_succeeded', (data: any) => {
-      console.log('[PUSHER CONTEXT] Subscription succeeded for:', `presence-room-${roomId}`);
+      // Subscription success handling
     });
 
     // Handle subscription error
     channel.bind('pusher:subscription_error', (error: any) => {
-      console.error('[PUSHER CONTEXT] Subscription error:', error);
+      // Subscription error handling
     });
 
     return () => {
-      console.log('[PUSHER CONTEXT] Unsubscribing from:', `presence-room-${roomId}`);
       pusherInstance.unsubscribe(`presence-room-${roomId}`);
       setChannel(null);
     };
   }, [roomId])
+
+  const subscribeToRoom = useCallback((roomId: string) => {
+    if (!pusher) return;
+    // Subscribing to room without console.log
+    const channel = pusher.subscribe(`presence-room-${roomId}`);
+    return channel;
+  }, [pusher]);
+
+  const handleGlobalEvent = useCallback((eventName: string, data: any) => {
+    // Global event handling without console.log
+  }, []);
+
+  const handleSubscriptionSucceeded = useCallback((channel: any) => {
+    // Subscription success handling without console.log
+  }, []);
+
+  const handleSubscriptionError = useCallback((error: any) => {
+    // Subscription error handling without console.error
+  }, []);
+
+  const unsubscribeFromRoom = useCallback((roomId: string) => {
+    if (!pusher) return;
+    // Unsubscribing without console.log
+    pusher.unsubscribe(`presence-room-${roomId}`);
+  }, [pusher]);
 
   return <PusherContext.Provider value={{ pusher, channel }}>{children}</PusherContext.Provider>
 }

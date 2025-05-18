@@ -11,6 +11,7 @@ import { kickPlayer } from "@/app/actions/room-actions"
 import { updatePlayer } from "@/app/actions/player-actions"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { PlayerAvatar } from "./player-avatar"
+import { ReactionBanner } from "./reaction-banner"
 
 interface Player {
   id: string
@@ -30,6 +31,7 @@ interface PlayersPanelProps {
   currentPlayerId: string
   votesRevealed: boolean
   deck: Deck
+  emojisEnabled: boolean
 }
 
 function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline" | "no-vote"; title: string }) {
@@ -75,7 +77,7 @@ function StatusIcon({ status, title }: { status: "thinking" | "voted" | "offline
   )
 }
 
-export default function PlayersPanel({ players, hostId, currentPlayerId, votesRevealed, deck }: PlayersPanelProps) {
+export default function PlayersPanel({ players, hostId, currentPlayerId, votesRevealed, deck, emojisEnabled }: PlayersPanelProps) {
   const { channel } = usePusherContext()
   const { toast } = useToast()
   const { currentStory } = useCurrentStory()
@@ -87,6 +89,19 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [activeReactions, setActiveReactions] = useState<{
+    id: string,
+    fromPlayer: any,
+    toPlayer: any,
+    emoji: string
+  }[]>([])
+  const [userReactionInProgress, setUserReactionInProgress] = useState<{ [userId: string]: boolean }>({})
+  const [showReaction, setShowReaction] = useState(false)
+  const [reactionData, setReactionData] = useState<{
+    fromPlayer: any
+    toPlayer: any
+    emoji: string
+  } | null>(null)
 
   // Only reset votes when story changes
   useEffect(() => {
@@ -325,6 +340,44 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
     return () => channel.unbind("player-updated", handlePlayerUpdated)
   }, [channel])
 
+  useEffect(() => {
+    if (!channel) {
+      console.log("No channel available for binding events")
+      return
+    }
+
+    console.log("Setting up channel event handlers")
+
+    // Bind to the reaction event
+    console.log("Binding to player-reaction event")
+    channel.bind("player-reaction", (data: any) => {
+      console.log("Reaction event received:", data)
+      console.log("Current localPlayers:", localPlayers)
+
+      const fromPlayer = localPlayers.find(p => p.id === data.fromPlayerId)
+      const toPlayer = localPlayers.find(p => p.id === data.toPlayerId)
+
+      console.log("Found players:", { fromPlayer, toPlayer })
+
+      if (fromPlayer && toPlayer) {
+        const id = `${fromPlayer.id}-${toPlayer.id}-${Date.now()}`;
+        setActiveReactions(reactions => [...reactions, { id, fromPlayer, toPlayer, emoji: data.emoji }]);
+        setUserReactionInProgress(prev => ({
+          ...prev,
+          [fromPlayer.id]: true
+        }));
+        console.log("Set reaction data and showing reaction:", { fromPlayer, toPlayer, emoji: data.emoji })
+      } else {
+        console.log("Could not find players:", { fromPlayerId: data.fromPlayerId, toPlayerId: data.toPlayerId })
+      }
+    })
+
+    return () => {
+      console.log("Cleaning up channel event handlers")
+      channel.unbind("player-reaction")
+    }
+  }, [channel, localPlayers])
+
   const handleKick = async (playerId: string, playerName: string) => {
     try {
       await kickPlayer(playerId)
@@ -369,158 +422,182 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
   })
 
   return (
-    <Card className="section-card">
-      <div className="panel-header">
-        <Users className="h-5 w-5 text-accent/80" />
-        <h2 className="panel-title">Players <span className="text-xs font-normal text-muted-foreground/70">({localPlayers.length})</span></h2>
-      </div>
-      <div className="mb-3" />
-      <CardContent className="space-y-6">
-        <div className="space-y-1">
-          {sortedPlayers.map((player) => {
-            const isCurrent = player.id === currentPlayerId
-            const isHost = player.isHost
-            const isOnline = player.isOnline
-            const hasVoted = player.hasVoted
+    <>
+      <Card className="section-card">
+        <div className="panel-header">
+          <Users className="h-5 w-5 text-accent/80" />
+          <h2 className="panel-title">Players <span className="text-xs font-normal text-muted-foreground/70">({localPlayers.length})</span></h2>
+        </div>
+        <div className="mb-3" />
+        <CardContent className="space-y-6">
+          <div className="space-y-1">
+            {sortedPlayers.map((player) => {
+              const isCurrent = player.id === currentPlayerId
+              const isHost = player.isHost
+              const isOnline = player.isOnline
+              const hasVoted = player.hasVoted
+              const vote = player.vote
 
-            let finalStatus: "thinking" | "voted" | "offline" | "no-vote";
-            let statusTitle = "";
+              let finalStatus: "thinking" | "voted" | "offline" | "no-vote";
+              let statusTitle = "";
 
-            if (votesRevealed) {
-              if (player.vote) {
-                // Don't use StatusIcon here, directly render the vote
+              if (votesRevealed) {
+                if (player.vote) {
+                  // Don't use StatusIcon here, directly render the vote
+                } else {
+                  finalStatus = "no-vote";
+                  statusTitle = "Did not vote";
+                }
               } else {
-                finalStatus = "no-vote";
-                statusTitle = "Did not vote";
+                if (!isOnline) {
+                  finalStatus = "offline";
+                  statusTitle = "Offline";
+                } else if (hasVoted) {
+                  finalStatus = "voted";
+                  statusTitle = "Voted";
+                } else {
+                  finalStatus = "thinking";
+                  statusTitle = "Estimating";
+                }
               }
-            } else {
-              if (!isOnline) {
-                finalStatus = "offline";
-                statusTitle = "Offline";
-              } else if (hasVoted) {
-                finalStatus = "voted";
-                statusTitle = "Voted";
-              } else {
-                finalStatus = "thinking";
-                statusTitle = "Estimating";
-              }
-            }
 
-            return (
-              <div
-                key={player.id}
-                className={`section-card flex items-center gap-3 min-w-0 group transition ${isCurrent ? "border-2 border-accent shadow" : ""} ${!isOnline ? "opacity-50" : ""} hover:bg-accent/10`}
-                tabIndex={0}
-                aria-label={`${player.name}${isHost ? " (Host)" : ""}${isCurrent ? " (You)" : ""}${!isOnline ? " (Offline)" : ""}`}
-              >
-                {/* Left: Avatar, Name, Badges, Kick */}
-                <div className="flex-1 min-w-0 flex items-center gap-3">
-                  <PlayerAvatar
-                    name={player.name}
-                    avatarStyle={player.avatarStyle || undefined}
-                    avatarSeed={player.avatarSeed || undefined}
-                    size="md"
-                  />
-                  <div className="flex-1 min-w-0 flex items-center gap-2 h-9 relative group/name-edit">
-                    {editingPlayerId === player.id ? (
-                      <form
-                        className="flex items-center gap-1 w-full"
-                        onSubmit={async (e) => {
-                          e.preventDefault()
-                          if (!editName.trim() || isSaving) return
-                          setIsSaving(true)
-                          try {
-                            await updatePlayer(player.id, { name: editName.trim() })
-                            if (player.id === currentPlayerId) {
-                              document.cookie = `playerName=${encodeURIComponent(editName.trim())}; path=/;`;
+              return (
+                <div
+                  key={player.id}
+                  className={`section-card flex items-center gap-3 min-w-0 group transition ${isCurrent ? "border-2 border-accent shadow" : ""} ${!isOnline ? "opacity-50" : ""} hover:bg-accent/10`}
+                  tabIndex={0}
+                  aria-label={`${player.name}${isHost ? " (Host)" : ""}${isCurrent ? " (You)" : ""}${!isOnline ? " (Offline)" : ""}`}
+                >
+                  {/* Left: Avatar, Name, Badges, Kick */}
+                  <div className="flex-1 min-w-0 flex items-center gap-3">
+                    <PlayerAvatar
+                      name={player.name}
+                      avatarStyle={player.avatarStyle || undefined}
+                      avatarSeed={player.avatarSeed || undefined}
+                      size="md"
+                      playerId={player.id}
+                      currentPlayerId={currentPlayerId}
+                      disabled={!isOnline || isCurrent || !emojisEnabled}
+                      emojiPanelDisabled={player.id === currentPlayerId && userReactionInProgress[player.id]}
+                    />
+                    <div className="flex-1 min-w-0 flex items-center gap-2 h-9 relative group/name-edit">
+                      {editingPlayerId === player.id ? (
+                        <form
+                          className="flex items-center gap-1 w-full"
+                          onSubmit={async (e) => {
+                            e.preventDefault()
+                            if (!editName.trim() || isSaving) return
+                            setIsSaving(true)
+                            try {
+                              await updatePlayer(player.id, { name: editName.trim() })
+                              if (player.id === currentPlayerId) {
+                                document.cookie = `playerName=${encodeURIComponent(editName.trim())}; path=/;`;
+                              }
+                              setEditingPlayerId(null)
+                            } catch (err) {
+                              // Optionally show error
+                            } finally {
+                              setIsSaving(false)
                             }
-                            setEditingPlayerId(null)
-                          } catch (err) {
-                            // Optionally show error
-                          } finally {
-                            setIsSaving(false)
-                          }
-                        }}
-                      >
-                        <input
-                          className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-accent w-28"
-                          value={editName}
-                          onChange={e => setEditName(e.target.value)}
-                          disabled={isSaving}
-                          autoFocus
-                        />
-                        <button type="submit" className="text-accent" disabled={isSaving} title="Save">
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button type="button" className="text-muted-foreground" onClick={() => setEditingPlayerId(null)} title="Cancel" disabled={isSaving}>
-                          <X className="w-4 h-4" />
-                        </button>
-                      </form>
-                    ) : (
-                      <>
-                        <span className="text-xs sm:text-sm font-semibold truncate">
-                          {player.name}
-                        </span>
-                        {/* Edit icon for current user */}
-                        {isCurrent && (
-                          <button
-                            type="button"
-                            className="ml-1 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-                            style={{ background: 'transparent', lineHeight: 0 }}
-                            onClick={() => {
-                              setEditingPlayerId(player.id)
-                              setEditName(player.name)
-                            }}
-                            title="Edit your name"
-                          >
-                            <Pencil className="w-4 h-4 text-accent" />
+                          }}
+                        >
+                          <input
+                            className="px-2 py-1 rounded-lg border border-accent/40 bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-accent w-28"
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            disabled={isSaving}
+                            autoFocus
+                          />
+                          <button type="submit" className="text-accent" disabled={isSaving} title="Save">
+                            <Check className="w-4 h-4" />
                           </button>
-                        )}
-                        {isCurrent && (
-                          <span className="ml-1 px-1 py-0 rounded-full bg-accent/20 text-accent text-[9px] sm:text-[10px] font-semibold normal-case flex-shrink-0">You</span>
-                        )}
-                        {isHost && (
-                          <span className="ml-1 px-1 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[9px] sm:text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
-                        )}
-                      </>
+                          <button type="button" className="text-muted-foreground" onClick={() => setEditingPlayerId(null)} title="Cancel" disabled={isSaving}>
+                            <X className="w-4 h-4" />
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <span className="text-xs sm:text-sm font-semibold truncate">
+                            {player.name}
+                          </span>
+                          {/* Edit icon for current user */}
+                          {isCurrent && (
+                            <button
+                              type="button"
+                              className="ml-1 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+                              style={{ background: 'transparent', lineHeight: 0 }}
+                              onClick={() => {
+                                setEditingPlayerId(player.id)
+                                setEditName(player.name)
+                              }}
+                              title="Edit your name"
+                            >
+                              <Pencil className="w-4 h-4 text-accent" />
+                            </button>
+                          )}
+                          {isCurrent && (
+                            <span className="ml-1 px-1 py-0 rounded-full bg-accent/20 text-accent text-[9px] sm:text-[10px] font-semibold normal-case flex-shrink-0">You</span>
+                          )}
+                          {isHost && (
+                            <span className="ml-1 px-1 py-0 rounded-full bg-purple-500/20 text-purple-300 text-[9px] sm:text-[10px] font-semibold normal-case flex-shrink-0">Host</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {/* Kick button (if present) */}
+                    {hostId === currentPlayerId && player.id !== currentPlayerId && (
+                      <ConfirmDialog
+                        title={<span className="flex items-center gap-2 text-red-600"><LogOut className="w-5 h-5" /> Kick Player</span>}
+                        description={<span>Are you sure you want to remove <b>{player.name}</b> from the room? This action cannot be undone.</span>}
+                        actionText={<span className="flex items-center gap-1"><LogOut className="w-4 h-4" /> Kick</span>}
+                        cancelText="Cancel"
+                        onConfirm={async () => { await handleKick(player.id, player.name) }}
+                      >
+                        <button
+                          className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm flex-shrink-0 flex items-center justify-center"
+                          title="Kick player"
+                          type="button"
+                        >
+                          <LogOut className="w-4 h-4" />
+                        </button>
+                      </ConfirmDialog>
                     )}
                   </div>
-                  {/* Kick button (if present) */}
-                  {hostId === currentPlayerId && player.id !== currentPlayerId && (
-                    <ConfirmDialog
-                      title={<span className="flex items-center gap-2 text-red-600"><LogOut className="w-5 h-5" /> Kick Player</span>}
-                      description={<span>Are you sure you want to remove <b>{player.name}</b> from the room? This action cannot be undone.</span>}
-                      actionText={<span className="flex items-center gap-1"><LogOut className="w-4 h-4" /> Kick</span>}
-                      cancelText="Cancel"
-                      onConfirm={async () => { await handleKick(player.id, player.name) }}
-                    >
-                      <button
-                        className="btn btn-ghost text-red-500 hover:text-red-700 p-1 text-sm flex-shrink-0 flex items-center justify-center"
-                        title="Kick player"
-                        type="button"
-                      >
-                        <LogOut className="w-4 h-4" />
-                      </button>
-                    </ConfirmDialog>
-                  )}
-                </div>
-                {/* Right: Status Icon */}
-                <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
-                  {votesRevealed ? (
-                    player.vote ? (
-                      <span className="btn-utility text-xs px-2 py-0.5 flex items-center" title={`Voted: ${player.vote}`}>{player.vote}</span>
+                  {/* Right: Status Icon */}
+                  <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
+                    {votesRevealed ? (
+                      player.vote ? (
+                        <span className="btn-utility text-xs px-2 py-0.5 flex items-center" title={`Voted: ${player.vote}`}>{player.vote}</span>
+                      ) : (
+                        <StatusIcon status="no-vote" title="Did not vote" />
+                      )
                     ) : (
-                      <StatusIcon status="no-vote" title="Did not vote" />
-                    )
-                  ) : (
-                    <StatusIcon status={finalStatus!} title={statusTitle} />
-                  )}
+                      <StatusIcon status={finalStatus!} title={statusTitle} />
+                    )}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {activeReactions.map(r => (
+        <ReactionBanner
+          key={r.id}
+          show={true}
+          fromPlayer={r.fromPlayer}
+          toPlayer={r.toPlayer}
+          emoji={r.emoji}
+          onComplete={() => {
+            setActiveReactions(reactions => reactions.filter(ar => ar.id !== r.id));
+            setUserReactionInProgress(prev => ({
+              ...prev,
+              [r.fromPlayer.id]: false
+            }));
+          }}
+        />
+      ))}
+    </>
   )
 }

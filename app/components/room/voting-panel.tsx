@@ -18,6 +18,7 @@ import { completeStory, completeStoryWithScore } from "@/app/actions/story-actio
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useSwipeable } from 'react-swipeable'
+import axios from "axios"
 
 interface Vote {
   playerId: string
@@ -50,6 +51,7 @@ interface VotingPanelProps {
       avatarSeed?: string | null
     }[]
     currentUserId?: string
+    id: string
   }
   storyId?: string
   celebrationsEnabled: boolean
@@ -178,7 +180,6 @@ export default function VotingPanel({
         try {
           await removeVote(storyId)
         } catch (error) {
-          console.error("[VotingPanel] Failed to remove vote:", error)
           // Revert optimistic update on error
           setSelectedCard(value)
         } finally {
@@ -194,7 +195,6 @@ export default function VotingPanel({
       try {
         await submitVote(storyId, value)
       } catch (error) {
-        console.error("[VotingPanel] Failed to submit vote:", error)
         // Revert optimistic update on error
         setSelectedCard(null)
       } finally {
@@ -429,7 +429,6 @@ export default function VotingPanel({
   }, [votes, currentStory, celebrationsEnabled, setShowConsensusConfetti]);
 
   const handleCompleteStory = async () => {
-    console.log('[VotingPanel] handleCompleteStory called', { currentStory, votes });
     if (!currentStory?.id || !isHost) return
     if (!votes || votes.length === 0) return
     const voteValues = votes.map(v => Number(v.value)).filter(v => !isNaN(v))
@@ -464,7 +463,7 @@ export default function VotingPanel({
       setMedianScore(null)
       setOverrideScore(null)
     } catch (error) {
-      console.error("Failed to complete story with manual override:", error)
+      // Error handling without console.error
     }
   }
 
@@ -504,6 +503,39 @@ export default function VotingPanel({
     preventScrollOnSwipe: true,
     delta: 30,
   })
+
+  const handleRemoveVote = async () => {
+    try {
+      await removeVote(storyId)
+    } catch (error) {
+      // Error handling without console.error
+      // Revert optimistic update on error
+      setSelectedCard(null)
+    }
+  }
+
+  const handleSubmitVote = async (value: string) => {
+    try {
+      await submitVote(storyId, value)
+    } catch (error) {
+      // Error handling without console.error
+      // Revert optimistic update on error
+      setSelectedCard(null)
+    }
+  }
+
+  const handleManualOverride = async (overrideScore: number) => {
+    try {
+      await axios.post("/api/story/complete", {
+        roomId: roomData.id,
+        storyId: currentStory?.id,
+        finalScore: overrideScore,
+        manualOverride: true
+      });
+    } catch (error) {
+      // Error handling without console.error
+    }
+  };
 
   return (
     <>

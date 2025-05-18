@@ -168,17 +168,10 @@ function RoomClientInner({ roomData }: { roomData: any }) {
 
   useEffect(() => {
     if (!channel) return;
-    console.log('[ROOMCLIENT] Channel state:', {
-      name: channel.name,
-      subscribed: channel.subscribed,
-      subscriptionPending: channel.subscriptionPending,
-      bindings: channel.bindings
-    });
   }, [channel]);
 
   useEffect(() => {
     if (!channel) return;
-    console.log('[ROOMCLIENT] Binding votes-revealed to channel:', channel.name);
 
     const handleVotesRevealed = (data: any) => {
       setCurrentStory((prev: any) => {
@@ -402,6 +395,18 @@ function RoomClientInner({ roomData }: { roomData: any }) {
     }
   }, [channel, toast, localPlayers])
 
+  useEffect(() => {
+    if (!channel) return
+
+    // Enable client events
+    channel.bind("pusher:subscription_succeeded", () => {
+      channel.trigger("client-player-reaction", {
+        type: "init"
+      })
+    })
+
+  }, [channel])
+
   return (
     <div className="flex flex-col">
       <RoomHeader
@@ -542,6 +547,7 @@ function RoomClientInner({ roomData }: { roomData: any }) {
                   currentPlayerId={roomData.currentPlayerId}
                   votesRevealed={currentStory?.votesRevealed}
                   deck={roomData.deck}
+                  emojisEnabled={emojisEnabled}
                 />
                 {roomData.isHost && (
                   <HostControls

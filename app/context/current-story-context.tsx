@@ -11,7 +11,7 @@ export function CurrentStoryProvider({ initialStory, children }: { initialStory:
   const [currentStory, setCurrentStory] = useState(initialStory)
 
   useEffect(() => {
-    console.log('[CONTEXT] currentStory updated:', currentStory);
+    // Update currentStory without console.log
   }, [currentStory]);
 
   return (
