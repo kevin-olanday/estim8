@@ -1,7 +1,10 @@
 {
-    "functions": {
-      "**/*": {
-        "regions": ["sin1"]
-      }
+  "functions": {
+    "api/**/*.ts": {
+      "regions": ["sin1"]
+    },
+    "api/**/*.js": {
+      "regions": ["sin1"]
     }
   }
+}
