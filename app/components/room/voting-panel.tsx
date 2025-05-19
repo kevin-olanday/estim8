@@ -94,7 +94,7 @@ export default function VotingPanel({
   const [dealAnimKey, setDealAnimKey] = useState(0);
   const [showManualOverrideModal, setShowManualOverrideModal] = useState(false)
   const [medianScore, setMedianScore] = useState<string | null>(null)
-  const [overrideScore, setOverrideScore] = useState<string | null>(null)
+  const [overrideScore, setOverrideScore] = useState<string>("")
   const [pendingStoryId, setPendingStoryId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false);
 
@@ -172,13 +172,22 @@ export default function VotingPanel({
     async (value: string) => {
       if (isVoting || !storyId) return
 
+      const startTime = performance.now();
+
       // If the card is already selected, remove the vote
       if (selectedCard === value) {
         // Optimistically update UI
+        const uiStartTime = performance.now();
         setSelectedCard(null)
         setIsVoting(true)
+        const uiEndTime = performance.now();
+        console.log(`[Performance] UI update for vote removal took ${uiEndTime - uiStartTime}ms`);
+
         try {
+          const removeStartTime = performance.now();
           await removeVote(storyId)
+          const removeEndTime = performance.now();
+          console.log(`[Performance] Remove vote operation took ${removeEndTime - removeStartTime}ms`);
         } catch (error) {
           // Revert optimistic update on error
           setSelectedCard(value)
@@ -189,17 +198,26 @@ export default function VotingPanel({
       }
 
       // Optimistically update UI
+      const uiStartTime = performance.now();
       setSelectedCard(value)
       setIsVoting(true)
+      const uiEndTime = performance.now();
+      console.log(`[Performance] UI update for vote submission took ${uiEndTime - uiStartTime}ms`);
 
       try {
+        const submitStartTime = performance.now();
         await submitVote(storyId, value)
+        const submitEndTime = performance.now();
+        console.log(`[Performance] Submit vote operation took ${submitEndTime - submitStartTime}ms`);
       } catch (error) {
         // Revert optimistic update on error
         setSelectedCard(null)
       } finally {
         setIsVoting(false)
       }
+
+      const endTime = performance.now();
+      console.log(`[Performance] Total handleVote operation took ${endTime - startTime}ms`);
     },
     [isVoting, storyId, selectedCard],
   )
@@ -437,10 +455,11 @@ export default function VotingPanel({
       await completeStory(currentStory.id)
     } else {
       const median = calculateMedian(voteValues)
-      setMedianScore(voteValues.length > 0 ? String(median) : "")
-      setOverrideScore(voteValues.length > 0 ? String(median) : "")
-      setPendingStoryId(currentStory.id)
-      setShowManualOverrideModal(true)
+      const medianStr = voteValues.length > 0 ? String(median) : "";
+      setMedianScore(medianStr);
+      setOverrideScore(medianStr);
+      setPendingStoryId(currentStory.id);
+      setShowManualOverrideModal(true);
     }
   }
 
@@ -448,24 +467,23 @@ export default function VotingPanel({
   const deckInteractionDisabled = !!currentStory?.votesRevealed && currentStory?.status !== "completed";
 
   const confirmManualOverride = async () => {
-    if (!pendingStoryId || overrideScore === null || overrideScore === "") return
+    if (!pendingStoryId) return;
+    const trimmedScore = overrideScore.trim();
+    if (trimmedScore === "" || isNaN(Number(trimmedScore))) return;
     try {
-      let score: string | number = overrideScore;
-      if (!isNaN(Number(overrideScore)) && overrideScore.trim() !== "") {
-        score = Number(overrideScore);
-      }
-      await completeStoryWithScore(pendingStoryId, score as any, {
+      const score = Number(trimmedScore);
+      await completeStoryWithScore(pendingStoryId, score, {
         manualOverride: true,
         originalVotes: votes
-      })
-      setShowManualOverrideModal(false)
-      setPendingStoryId(null)
-      setMedianScore(null)
-      setOverrideScore(null)
+      });
+      setShowManualOverrideModal(false);
+      setPendingStoryId(null);
+      setMedianScore(null);
+      setOverrideScore("");
     } catch (error) {
       // Error handling without console.error
     }
-  }
+  };
 
   // Add calculateMedian helper
   const calculateMedian = (arr: number[]): string => {
@@ -674,15 +692,16 @@ export default function VotingPanel({
           </div>
           <div className="space-y-3 mt-2">
             <Input
-              type="text"
-              value={overrideScore || ''}
-              onChange={(e) => setOverrideScore(e.target.value)}
+              type="number"
+              value={overrideScore}
+              onChange={e => setOverrideScore(e.target.value)}
               placeholder="Override Score"
             />
             <button
               className="w-full btn btn-primary flex items-center justify-center gap-2 py-2 rounded-lg"
               onClick={confirmManualOverride}
               type="button"
+              disabled={overrideScore.trim() === "" || isNaN(Number(overrideScore))}
             >
               Confirm
             </button>

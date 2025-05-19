@@ -157,6 +157,7 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
     };
 
     const handleVoteSubmitted = (data: any) => {
+      const startTime = performance.now();
       // Optimistically update the player's vote status
       setLocalPlayers((prev) =>
         prev.map((player) =>
@@ -171,9 +172,12 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             : player
         )
       );
+      const endTime = performance.now();
+      console.log(`[Performance] Vote submission event handling took ${endTime - startTime}ms`);
     }
 
     const handleVotesReset = () => {
+      const startTime = performance.now();
       setLocalPlayers((prev) =>
         prev.map((player) => ({
           ...player,
@@ -182,9 +186,12 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
           lastVoteTime: undefined,
         }))
       );
+      const endTime = performance.now();
+      console.log(`[Performance] Votes reset event handling took ${endTime - startTime}ms`);
     }
 
     const handleVoteRemoved = (data: any) => {
+      const startTime = performance.now();
       setLocalPlayers((prev) =>
         prev.map((player) =>
           player.id === data.playerId
@@ -197,6 +204,8 @@ export default function PlayersPanel({ players, hostId, currentPlayerId, votesRe
             : player
         )
       );
+      const endTime = performance.now();
+      console.log(`[Performance] Vote removal event handling took ${endTime - startTime}ms`);
     };
 
     channel.bind("votes-revealed", handleVotesRevealed)

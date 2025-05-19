@@ -33,8 +33,6 @@ export function PlayerAvatar({
   const avatarRef = useRef<HTMLDivElement>(null)
   const { channel } = usePusherContext()
 
-  console.log("PlayerAvatar render:", { name, playerId, currentPlayerId, disabled, hasChannel: !!channel })
-
   const sizeClasses = {
     sm: "w-8 h-8",
     md: "w-10 h-10",
@@ -60,20 +58,15 @@ export function PlayerAvatar({
   }
 
   const handleClick = (e: React.MouseEvent) => {
-    console.log("Avatar clicked:", { playerId, currentPlayerId, disabled })
-    
     if (disabled || !playerId || !currentPlayerId || playerId === currentPlayerId) {
-      console.log("Click ignored:", { disabled, hasPlayerId: !!playerId, hasCurrentPlayerId: !!currentPlayerId, isSelf: playerId === currentPlayerId })
       return
     }
 
     const rect = avatarRef.current?.getBoundingClientRect()
     if (!rect) {
-      console.log("No rect found for avatar")
       return
     }
 
-    console.log("Opening emoji panel at position:", { x: rect.left, y: rect.bottom + 8 })
     setPanelPosition({
       x: rect.left,
       y: rect.bottom + 8
@@ -82,10 +75,7 @@ export function PlayerAvatar({
   }
 
   const handleEmojiSelect = async (emoji: string) => {
-    console.log("Emoji selected:", { emoji, playerId, currentPlayerId, hasChannel: !!channel })
-    
     if (!channel || !playerId || !currentPlayerId) {
-      console.log("Cannot trigger reaction:", { hasChannel: !!channel, hasPlayerId: !!playerId, hasCurrentPlayerId: !!currentPlayerId })
       return
     }
 
@@ -95,7 +85,6 @@ export function PlayerAvatar({
       emoji,
       roomId: channel.name.replace('presence-room-', '')
     }
-    console.log("Sending reaction:", eventData)
 
     try {
       const response = await fetch('/api/room/reaction', {
@@ -110,7 +99,6 @@ export function PlayerAvatar({
         throw new Error('Failed to send reaction')
       }
 
-      console.log("Reaction sent successfully")
     } catch (error) {
       console.error("Error sending reaction:", error)
     }

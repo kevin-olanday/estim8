@@ -289,8 +289,7 @@ export async function completeStoryWithScore(storyId: string, score: string | nu
     },
     data: {
       status: "completed",
-      // Cast as any to allow string or number (schema is String, but types may expect number)
-      finalScore: score as any,
+      finalScore: String(score), // Ensure finalScore is always a string
       manualOverride: options?.manualOverride || false,
       originalVotes: options?.originalVotes ? JSON.stringify(options.originalVotes) : undefined,
     },

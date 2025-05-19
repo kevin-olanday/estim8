@@ -7,6 +7,7 @@ import { revealVotes } from "./story-actions"
 import { prisma } from "@/lib/prisma"
 
 export async function submitVote(storyId: string, value: string) {
+  const startTime = performance.now();
   const cookiesStore = await cookies()
   const roomId = cookiesStore.get("roomId")?.value
   const playerId = cookiesStore.get("playerId")?.value
@@ -16,8 +17,10 @@ export async function submitVote(storyId: string, value: string) {
   }
 
   // Use a transaction to ensure data consistency
+  const dbStartTime = performance.now();
   const result = await prisma.$transaction(async (tx) => {
     // Get story and room data in a single query
+    const storyQueryStart = performance.now();
     const story = await tx.story.findFirst({
       where: {
         id: storyId,
@@ -38,6 +41,7 @@ export async function submitVote(storyId: string, value: string) {
         },
       },
     })
+    const storyQueryEnd = performance.now();
 
     if (!story) throw new Error("Story not active")
     if (!story.room) throw new Error("Room not found")
@@ -58,6 +62,7 @@ export async function submitVote(storyId: string, value: string) {
     }
 
     // Create or update the vote
+    const voteQueryStart = performance.now();
     const vote = await tx.vote.upsert({
       where: {
         playerId_storyId: {
@@ -77,23 +82,30 @@ export async function submitVote(storyId: string, value: string) {
         player: true,
       },
     })
+    const voteQueryEnd = performance.now();
 
     // Count votes for this story
+    const countQueryStart = performance.now();
     const voteCount = await tx.vote.count({
       where: {
         storyId,
       },
     })
+    const countQueryEnd = performance.now();
 
     // If all players have voted and autoRevealVotes is enabled, reveal votes
     if (voteCount === story.room.players.length && story.room.autoRevealVotes) {
+      const revealStart = performance.now();
       await revealVotes(storyId)
+      const revealEnd = performance.now();
     }
 
     return { vote, voteCount, story }
   })
+  const dbEndTime = performance.now();
 
   // Broadcast vote update via Pusher
+  const pusherStartTime = performance.now();
   await pusherServer.trigger(`presence-room-${roomId}`, "vote-submitted", {
     playerId,
     storyId,
@@ -105,8 +117,11 @@ export async function submitVote(storyId: string, value: string) {
     totalPlayers: result.story.room.players.length,
     isComplete: result.voteCount === result.story.room.players.length
   })
+  const pusherEndTime = performance.now();
 
   revalidatePath(`/room/[roomId]`)
+
+  const endTime = performance.now();
 
   return { success: true }
 }

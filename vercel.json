@@ -1,0 +1,7 @@
+{
+    "functions": {
+      "**/*": {
+        "regions": ["sin1"]
+      }
+    }
+  }
