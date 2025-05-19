@@ -14,7 +14,7 @@ export async function createRoom(formData: FormData) {
   const hostName = formData.get("hostName") as string
   const deckTypeValue = (formData.get("deckType") as string) || DeckType.FIBONACCI
   const avatarStyle = formData.get("avatarStyle") as string | null
-  const avatarSeed = formData.get("avatarSeed") as string | null
+  let avatarSeed = formData.get("avatarSeed") as string | null
 
   if (!hostName) {
     throw new Error("Host name is required")
@@ -24,6 +24,26 @@ export async function createRoom(formData: FormData) {
   const deckType = Object.values(DeckType).includes(deckTypeValue as DeckType)
     ? (deckTypeValue as DeckType)
     : DeckType.FIBONACCI
+
+  // Validate avatarSeed is a valid JSON string with accessories
+  let parsedSeed: any = null;
+  try {
+    parsedSeed = avatarSeed ? JSON.parse(avatarSeed) : null;
+  } catch {
+    parsedSeed = null;
+  }
+  if (!parsedSeed || !parsedSeed.accessories) {
+    // Fallback to a default avatarSeed with accessories
+    parsedSeed = {
+      hair: "straightHair",
+      mouth: "braces",
+      eyes: "confused",
+      hairColor: "d56c0c",
+      skinColor: "643d19",
+      accessories: ["catEars"]
+    };
+    avatarSeed = JSON.stringify(parsedSeed);
+  }
 
   // Generate a unique room code
   const roomCode = generateRoomCode()
@@ -44,8 +64,8 @@ export async function createRoom(formData: FormData) {
       name: hostName,
       isHost: true,
       roomId: room.id,
-      avatarStyle: avatarStyle || undefined,
-      avatarSeed: avatarSeed || undefined,
+      avatarStyle: avatarStyle,
+      avatarSeed: avatarSeed,
     },
   })
 
@@ -74,10 +94,30 @@ export async function joinRoom(formData: FormData) {
   const roomCode = formData.get("roomCode") as string
   const playerName = formData.get("playerName") as string
   const avatarStyle = formData.get("avatarStyle") as string | null
-  const avatarSeed = formData.get("avatarSeed") as string | null
+  let avatarSeed = formData.get("avatarSeed") as string | null
 
   if (!roomCode || !playerName) {
     return { error: "Room code and name are required" }
+  }
+
+  // Validate avatarSeed is a valid JSON string with accessories
+  let parsedSeed: any = null;
+  try {
+    parsedSeed = avatarSeed ? JSON.parse(avatarSeed) : null;
+  } catch {
+    parsedSeed = null;
+  }
+  if (!parsedSeed || !parsedSeed.accessories) {
+    // Fallback to a default avatarSeed with accessories
+    parsedSeed = {
+      hair: "straightHair",
+      mouth: "braces",
+      eyes: "confused",
+      hairColor: "d56c0c",
+      skinColor: "643d19",
+      accessories: ["catEars"]
+    };
+    avatarSeed = JSON.stringify(parsedSeed);
   }
 
   // Find the room
@@ -97,8 +137,8 @@ export async function joinRoom(formData: FormData) {
       name: playerName,
       isHost: false,
       roomId: room.id,
-      avatarStyle: avatarStyle || undefined,
-      avatarSeed: avatarSeed || undefined,
+      avatarStyle: avatarStyle,
+      avatarSeed: avatarSeed,
     },
   })
 
@@ -197,6 +237,8 @@ export async function getRoomData(roomCode: string) {
         playerId: vote.playerId,
         playerName: vote.player.name || "",
         value: vote.choice,
+        avatarStyle: vote.player.avatarStyle || null,
+        avatarSeed: vote.player.avatarSeed || null,
       }))
     : []
 
@@ -238,6 +280,8 @@ export async function getRoomData(roomCode: string) {
       playerId: vote.playerId,
       playerName: vote.player?.name ?? "Unknown",
       value: vote.choice,
+      avatarStyle: vote.player?.avatarStyle || null,
+      avatarSeed: vote.player?.avatarSeed || null,
     })) : [],
   }))
 

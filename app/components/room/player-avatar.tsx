@@ -42,19 +42,26 @@ export function PlayerAvatar({
   let avatarUrl = ''
   let showFallback = false
   try {
+    console.log('PlayerAvatar:', { avatarStyle, avatarSeed });
     if (avatarStyle === "big-smile" && avatarSeed) {
       const options = typeof avatarSeed === 'string' ? JSON.parse(avatarSeed) : avatarSeed
-      // Build v9.x URL with query params
+      console.log('Parsed avatar options:', options);
       const accessoriesParam = options.accessories && options.accessories.length > 0
-        ? options.accessories.map((a: string) => `&accessories[]=${encodeURIComponent(a)}`).join("")
+        ? options.accessories.map((a: string) => `&accessories=${encodeURIComponent(a)}`).join("")
         : ""
-      avatarUrl = `https://api.dicebear.com/9.x/big-smile/svg?hair=${options.hair}&mouth=${options.mouth}&eyes=${options.eyes}&hairColor[]=${options.hairColor}&skinColor[]=${options.skinColor}${accessoriesParam}&accessoriesProbability=30`
+      avatarUrl = `https://api.dicebear.com/9.x/big-smile/svg?hair=${options.hair}&mouth=${options.mouth}&eyes=${options.eyes}&hairColor[]=${options.hairColor}&skinColor[]=${options.skinColor}${accessoriesParam}&accessoriesProbability=100`
+      console.log('Dicebear URL:', avatarUrl);
+      // Fallback if options are missing
+      if (!options.hair || !options.mouth || !options.eyes || !options.hairColor || !options.skinColor || !options.accessories) {
+        showFallback = true;
+      }
     } else {
       // fallback to initials
       avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
     }
-  } catch {
+  } catch (e) {
     showFallback = true
+    console.log('PlayerAvatar fallback due to error:', e, { avatarStyle, avatarSeed });
   }
 
   const handleClick = (e: React.MouseEvent) => {
